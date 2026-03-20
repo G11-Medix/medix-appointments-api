@@ -1,11 +1,13 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 
+from app.api.middlewares.audit_middleware import build_audit_middleware
 from app.api.router import api_router
 from app.db.supabase import get_supabase_client
 
 app = FastAPI(title="Medix Appointments API")
-app.include_router(api_router, prefix="/api")
 supabase = get_supabase_client()
+app.middleware("http")(build_audit_middleware(supabase))
+app.include_router(api_router, prefix="/api")
 
 
 @app.get("/")

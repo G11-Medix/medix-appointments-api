@@ -1,9 +1,3 @@
-### Variables de entorno
-
-1. Copia `.env.example` a `.env`.
-2. Completa las variables del SDK de Supabase:
-- `SUPABASE_URL=https://[TU_PROJECT_REF].supabase.co`
-- `SUPABASE_KEY=[TU_SUPABASE_SERVICE_ROLE_KEY]`
 
 ### Ejecutar local
 
@@ -22,6 +16,16 @@ uvicorn app.main:app --reload
 
 - `GET /`
 - `GET /api/instituciones/?limit=20`
+
+### Auditoría automática
+
+- Se auditan todas las operaciones bajo `/api/*`.
+- Cada request auditada intenta insertar un registro en `Log_Auditoria`.
+- `id_usuario` se resuelve desde JWT Bearer validado con Supabase (`auth.get_user`).
+- `resultado`:
+  - `EXITO` para status `< 400`
+  - `ERROR` para status `>= 400` o excepciones no controladas
+- Política fail-open: si falla insertar el log, la API responde normalmente.
 
 ### Build and Run (Docker)
 
