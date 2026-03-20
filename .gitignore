@@ -1,0 +1,21 @@
+# Seguridad
+.env
+
+# Python (Compilados y caché)
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.python-version
+
+# Entornos virtuales
+venv/
+.venv/
+env/
+
+# IDEs y Editores
+.vscode/
+.idea/
+
+# Docker
+*.log
