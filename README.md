@@ -12,10 +12,12 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload
 ```
 
-### Endpoints disponibles
+### Docs
 
-- `GET /`
-- `GET /api/instituciones/?limit=20`
+```curl
+http://localhost:8000/docs
+http://localhost:8000/redoc
+```
 
 ### Auditoría automática
 
