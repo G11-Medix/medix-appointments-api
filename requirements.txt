@@ -1,2 +1,4 @@
 fastapi
 uvicorn[standard]
+pydantic-settings>=2.0
+supabase>=2.5.0
