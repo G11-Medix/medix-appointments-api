@@ -1,9 +1,10 @@
 
 ### Ejecutar local
 
-Activar entorno
+Crear y activar entorno
 
 ```bash
+python3 -m venv venv
 source venv/bin/activate
 ```
 
