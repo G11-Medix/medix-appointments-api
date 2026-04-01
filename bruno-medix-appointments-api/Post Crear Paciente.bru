@@ -1,0 +1,26 @@
+meta {
+  name: Post Crear Paciente
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{API_URL}}{{API_PREFIX}}/pacientes/
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "tipo_documento": "{{PACIENTE_TIPO_DOCUMENTO}}",
+    "numero_documento": "{{PACIENTE_NUMERO_DOCUMENTO}}",
+    "nombres": "{{PACIENTE_NOMBRES}}",
+    "apellidos": "{{PACIENTE_APELLIDOS}}",
+    "fecha_nacimiento": "{{PACIENTE_FECHA_NACIMIENTO}}",
+    "telefono": "{{PACIENTE_TELEFONO}}",
+    "correo": "{{PACIENTE_CORREO}}",
+    "estado": "{{PACIENTE_ESTADO}}",
+    "id_usuario": "{{PACIENTE_ID_USUARIO}}",
+    "id_institucion": {{ID_INSTITUCION}}
+  }
+}

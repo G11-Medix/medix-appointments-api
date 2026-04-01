@@ -30,6 +30,12 @@ http://localhost:8000/redoc
   - `ERROR` para status `>= 400` o excepciones no controladas
 - Política fail-open: si falla insertar el log, la API responde normalmente.
 
+### Pruebas
+
+```bash
+pytest
+```
+
 ### Build and Run (Docker)
 
 ```bash

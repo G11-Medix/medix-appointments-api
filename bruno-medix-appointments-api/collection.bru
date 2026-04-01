@@ -1,0 +1,42 @@
+auth {
+  mode: none
+}
+
+vars:pre-request {
+  API_URL: http://localhost:8000
+  API_PREFIX: /api
+
+  ID_INSTITUCION: 1
+
+  ID_PACIENTE: 1
+  ID_PACIENTE_IPS: 1
+  PACIENTE_TIPO_DOCUMENTO: CC
+  PACIENTE_NUMERO_DOCUMENTO: 1100101101
+  PACIENTE_NOMBRES: Juan
+  PACIENTE_APELLIDOS: Perez
+  PACIENTE_FECHA_NACIMIENTO: 1990-01-10
+  PACIENTE_TELEFONO: 3001234567
+  PACIENTE_CORREO: juan.perez@example.com
+  PACIENTE_ESTADO: ACTIVO
+  PACIENTE_ID_USUARIO: 8f41cb7d-0f6f-4f03-b4ec-55a3ec6af111
+
+  ID_CITA: 1
+  ID_PRESTADOR: 1
+  FECHA_HORA_CITA: 2026-04-01T08:00:00
+  FECHA_HORA_REPROGRAMACION: 2026-04-01T09:00:00
+  FECHA_DESDE: 2026-04-01T00:00:00
+  FECHA_HASTA: 2026-04-30T23:59:59
+  MOTIVO_CANCELACION: Paciente no asistira
+}
+
+docs {
+  ### Requisitos
+  - Levantar `medix-appointments-api` en `http://localhost:8000`.
+  - Configurar `IPS_ROUTES_JSON` en `.env` para enrutar `id_institucion` a IPS mock.
+  - Levantar `eps-mock-service` para que funcionen endpoints de citas.
+
+  ### Nota sobre IDs
+  - Si creas un paciente nuevo, actualiza `ID_PACIENTE` con el `id_paciente` retornado.
+  - Para endpoints de citas usa `ID_PACIENTE_IPS` (paciente existente en la IPS mock).
+  - Si creas una cita nueva, actualiza `ID_CITA` con el `id` retornado.
+}

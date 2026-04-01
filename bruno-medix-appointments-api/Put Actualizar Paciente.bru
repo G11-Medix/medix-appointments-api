@@ -1,0 +1,21 @@
+meta {
+  name: Put Actualizar Paciente
+  type: http
+  seq: 6
+}
+
+put {
+  url: {{API_URL}}{{API_PREFIX}}/pacientes/{{ID_PACIENTE}}
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "nombres": "{{PACIENTE_NOMBRES}} Actualizado",
+    "apellidos": "{{PACIENTE_APELLIDOS}} Actualizado",
+    "telefono": "{{PACIENTE_TELEFONO}}",
+    "correo": "actualizado.{{PACIENTE_CORREO}}",
+    "estado": "{{PACIENTE_ESTADO}}"
+  }
+}

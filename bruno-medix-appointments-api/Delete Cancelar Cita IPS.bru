@@ -1,0 +1,17 @@
+meta {
+  name: Delete Cancelar Cita IPS
+  type: http
+  seq: 11
+}
+
+delete {
+  url: {{API_URL}}{{API_PREFIX}}/instituciones/{{ID_INSTITUCION}}/citas/{{ID_CITA}}
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "motivo": "{{MOTIVO_CANCELACION}}"
+  }
+}

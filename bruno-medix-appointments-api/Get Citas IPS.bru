@@ -1,0 +1,11 @@
+meta {
+  name: Get Citas IPS
+  type: http
+  seq: 8
+}
+
+get {
+  url: {{API_URL}}{{API_PREFIX}}/instituciones/{{ID_INSTITUCION}}/citas/?id_paciente={{ID_PACIENTE_IPS}}&desde={{FECHA_DESDE}}&hasta={{FECHA_HASTA}}
+  body: none
+  auth: none
+}
