@@ -10,6 +10,10 @@ post {
   auth: none
 }
 
+headers {
+  Authorization: Bearer {{ACCESS_TOKEN}}
+}
+
 body:json {
   {
     "tipo_documento": "{{PACIENTE_TIPO_DOCUMENTO}}",

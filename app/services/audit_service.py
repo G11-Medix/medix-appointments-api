@@ -39,6 +39,15 @@ class AuditService:
         except Exception:
             return None
 
+    def get_authenticated_user_id(self, request: Request) -> str | None:
+        cached_id = getattr(request.state, "authenticated_user_id", None)
+        if cached_id:
+            return str(cached_id)
+
+        cached_user = getattr(request.state, "authenticated_user", None)
+        user_id = getattr(cached_user, "id_usuario", None)
+        return str(user_id) if user_id else None
+
     def build_detail(self, status_code: int, path: str, query: str) -> str:
         detail = f"status={status_code}; path={path}; query={query if query else '-'}"
         return self._truncate_detail(detail)

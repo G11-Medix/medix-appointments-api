@@ -10,6 +10,10 @@ put {
   auth: none
 }
 
+headers {
+  Authorization: Bearer {{ACCESS_TOKEN}}
+}
+
 body:json {
   {
     "nombres": "{{PACIENTE_NOMBRES}} Actualizado",

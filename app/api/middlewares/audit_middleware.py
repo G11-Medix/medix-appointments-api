@@ -21,13 +21,13 @@ def build_audit_middleware(supabase: Client) -> Callable:
         query = request.url.query
         tipo_accion = f"{request.method} {path}"
         ip_origen = service.get_ip_origen(request)
-        id_usuario = service.get_id_usuario(supabase, request.headers.get("authorization"))
 
         try:
             response = await call_next(request)
             status_code = response.status_code
             resultado = "EXITO" if status_code < 400 else "ERROR"
             detalle = service.build_detail(status_code=status_code, path=path, query=query)
+            id_usuario = service.get_authenticated_user_id(request)
 
             try:
                 service.record(
@@ -50,6 +50,7 @@ def build_audit_middleware(supabase: Client) -> Callable:
                 path=path,
                 query=query,
             )
+            id_usuario = service.get_authenticated_user_id(request)
 
             try:
                 service.record(

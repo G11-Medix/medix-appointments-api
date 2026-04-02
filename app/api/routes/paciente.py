@@ -1,5 +1,6 @@
-from fastapi import APIRouter, HTTPException, Query, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 
+from app.api.dependencies.auth import AuthenticatedUserContext, get_authenticated_user_from_state
 from app.db.supabase import get_supabase_client
 from app.schemas.paciente import PacienteCreate, PacienteResponse, PacienteUpdate
 from app.services.paciente_service import PacienteService
@@ -24,20 +25,36 @@ def get_paciente(id_paciente: int) -> PacienteResponse:
 
 
 @router.post("/", response_model=PacienteResponse, status_code=status.HTTP_201_CREATED)
-def create_paciente(payload: PacienteCreate) -> PacienteResponse:
-    row = paciente_service.create_paciente(supabase=supabase, payload=payload)
+def create_paciente(
+    payload: PacienteCreate,
+    auth_user: AuthenticatedUserContext = Depends(get_authenticated_user_from_state),
+) -> PacienteResponse:
+    row = paciente_service.create_paciente(
+        supabase=supabase,
+        payload=payload,
+        authenticated_user_id=str(auth_user.id_usuario),
+    )
     if not row:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No se pudo crear el paciente")
     return PacienteResponse.model_validate(row)
 
 
 @router.put("/{id_paciente}", response_model=PacienteResponse)
-def update_paciente(id_paciente: int, payload: PacienteUpdate) -> PacienteResponse:
+def update_paciente(
+    id_paciente: int,
+    payload: PacienteUpdate,
+    auth_user: AuthenticatedUserContext = Depends(get_authenticated_user_from_state),
+) -> PacienteResponse:
     existing = paciente_service.get_paciente(supabase=supabase, id_paciente=id_paciente)
     if not existing:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Paciente no encontrado")
 
-    row = paciente_service.update_paciente(supabase=supabase, id_paciente=id_paciente, payload=payload)
+    row = paciente_service.update_paciente(
+        supabase=supabase,
+        id_paciente=id_paciente,
+        payload=payload,
+        authenticated_user_id=str(auth_user.id_usuario),
+    )
     if not row:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No se pudo actualizar el paciente")
     return PacienteResponse.model_validate(row)

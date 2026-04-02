@@ -20,11 +20,21 @@ http://localhost:8000/docs
 http://localhost:8000/redoc
 ```
 
+### Autenticación
+
+- Todos los endpoints bajo `/api/*` requieren `Authorization: Bearer <token>`.
+- El token se valida contra Supabase (`auth.get_user`).
+- Además, el usuario debe existir en tabla `Usuario` con estado `ACTIVO`.
+- Respuestas de acceso:
+  - `401` para token ausente, malformado, inválido o expirado.
+  - `403` para token válido sin registro local en `Usuario` o con estado distinto de `ACTIVO`.
+- Rutas fuera de `/api/*` (`/`, `/docs`, `/redoc`, `/openapi.json`) permanecen públicas.
+
 ### Auditoría automática
 
 - Se auditan todas las operaciones bajo `/api/*`.
 - Cada request auditada intenta insertar un registro en `Log_Auditoria`.
-- `id_usuario` se resuelve desde JWT Bearer validado con Supabase (`auth.get_user`).
+- `id_usuario` se reutiliza desde el contexto autenticado del request.
 - `resultado`:
   - `EXITO` para status `< 400`
   - `ERROR` para status `>= 400` o excepciones no controladas
