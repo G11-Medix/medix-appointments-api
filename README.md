@@ -25,6 +25,9 @@ http://localhost:8000/redoc
 - Todos los endpoints bajo `/api/*` requieren `Authorization: Bearer <token>`.
 - El token se valida contra Supabase (`auth.get_user`).
 - Además, el usuario debe existir en tabla `Usuario` con estado `ACTIVO`.
+- `GET /auth/eligibility/{telefono}` permanece público y responde si un paciente está habilitado para OTP por teléfono.
+- `POST /api/admin/pacientes/{id_paciente}/grant-access` requiere un usuario autenticado con rol administrativo (`ADMIN`, `ADMINISTRADOR` o `SUPERADMIN`).
+- La provisión administrativa usa `SUPABASE_SERVICE_ROLE_KEY` solo en backend para crear o reconciliar usuarios en Supabase Auth.
 - Respuestas de acceso:
   - `401` para token ausente, malformado, inválido o expirado.
   - `403` para token válido sin registro local en `Usuario` o con estado distinto de `ACTIVO`.

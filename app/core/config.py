@@ -8,6 +8,10 @@ class Settings(BaseSettings):
     environment: str = Field(default="development", validation_alias="ENVIRONMENT")
     supabase_url: str = Field(validation_alias="SUPABASE_URL")
     supabase_key: str = Field(validation_alias="SUPABASE_KEY")
+    supabase_service_role_key: str | None = Field(
+        default=None,
+        validation_alias="SUPABASE_SERVICE_ROLE_KEY",
+    )
     ips_routes_json: str = Field(default="{}", validation_alias="IPS_ROUTES_JSON")
     ips_timeout_seconds: float = Field(default=10, validation_alias="IPS_TIMEOUT_SECONDS", gt=0)
 

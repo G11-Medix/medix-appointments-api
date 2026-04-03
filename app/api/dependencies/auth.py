@@ -8,6 +8,7 @@ from supabase import Client
 from app.db.supabase import get_supabase_client
 
 _bearer_scheme = HTTPBearer(auto_error=False)
+ADMIN_ROLES = frozenset({"ADMIN", "ADMINISTRADOR", "SUPERADMIN"})
 
 
 @dataclass(frozen=True)
@@ -70,6 +71,23 @@ def get_authenticated_user_from_state(request: Request) -> AuthenticatedUserCont
         return context
 
     raise _unauthorized("Sesión no autenticada")
+
+
+def require_active_admin_user(
+    request: Request,
+    credentials: HTTPAuthorizationCredentials | None = Security(_bearer_scheme),
+) -> AuthenticatedUserContext:
+    context = getattr(request.state, "authenticated_user", None)
+    if not isinstance(context, AuthenticatedUserContext):
+        context = require_active_user(request=request, credentials=credentials)
+
+    if str(context.rol or "").upper() not in ADMIN_ROLES:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Usuario sin permisos administrativos",
+        )
+
+    return context
 
 
 def _validate_token(supabase: Client, token: str) -> str:
