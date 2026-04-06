@@ -7,6 +7,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from app.api.dependencies import auth as auth_module
+from app.api.routes.paciente import registration_router as paciente_registration_router
 from app.api.router import api_router
 from app.api.routes import cita as cita_module
 from app.api.routes import institucion as institucion_module
@@ -115,7 +116,7 @@ def auth_client(monkeypatch: pytest.MonkeyPatch) -> tuple[TestClient, str]:
                 "estado": "ACTIVO",
                 "fecha_creacion": "2026-03-31T10:00:00",
                 "id_usuario": auth_user_id,
-                "id_institucion": 1,
+                "id_eps": 1,
             }
 
         def create_paciente(self, supabase, payload, authenticated_user_id=None):  # noqa: ANN001
@@ -135,7 +136,7 @@ def auth_client(monkeypatch: pytest.MonkeyPatch) -> tuple[TestClient, str]:
                 "estado": payload.estado,
                 "fecha_creacion": "2026-03-31T10:00:00",
                 "id_usuario": authenticated_user_id,
-                "id_institucion": payload.id_institucion,
+                "id_eps": payload.id_eps,
             }
 
         def update_paciente(self, supabase, id_paciente: int, payload, authenticated_user_id=None):  # noqa: ANN001
@@ -189,6 +190,7 @@ def auth_client(monkeypatch: pytest.MonkeyPatch) -> tuple[TestClient, str]:
     monkeypatch.setattr(cita_module, "cita_service", FakeCitaService())
 
     app = FastAPI()
+    app.include_router(paciente_registration_router, prefix="/api")
     app.include_router(api_router, prefix="/api")
     client = TestClient(app)
     return client, auth_user_id
@@ -240,7 +242,7 @@ def test_paciente_create_forces_id_usuario_from_token(
             "correo": "ana@example.com",
             "estado": "ACTIVO",
             "id_usuario": attacker_user_id,
-            "id_institucion": 1,
+            "id_eps": 1,
         },
     )
 
@@ -267,3 +269,69 @@ def test_paciente_update_forces_id_usuario_from_token(auth_client: tuple[TestCli
     assert response.json()["id_usuario"] == auth_user_id
     assert captured_service.last_update["payload_id_usuario"] == attacker_user_id
     assert captured_service.last_update["authenticated_user_id"] == auth_user_id
+
+
+def test_paciente_create_allows_valid_token_without_existing_usuario(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    auth_user_id = str(uuid4())
+    attacker_user_id = str(uuid4())
+    fake_supabase = FakeSupabase(
+        users={},
+        token_to_user_id={"ok-token": auth_user_id},
+    )
+    monkeypatch.setattr(auth_module, "get_supabase_client", lambda: fake_supabase)
+
+    class FakePacienteService:
+        def __init__(self) -> None:
+            self.last_create: dict | None = None
+
+        def create_paciente(self, supabase, payload, authenticated_user_id=None):  # noqa: ANN001
+            self.last_create = {
+                "payload_id_usuario": str(payload.id_usuario),
+                "authenticated_user_id": authenticated_user_id,
+            }
+            return {
+                "id_paciente": 10,
+                "tipo_documento": payload.tipo_documento,
+                "numero_documento": payload.numero_documento,
+                "nombres": payload.nombres,
+                "apellidos": payload.apellidos,
+                "fecha_nacimiento": payload.fecha_nacimiento.isoformat(),
+                "telefono": payload.telefono,
+                "correo": payload.correo,
+                "estado": payload.estado,
+                "fecha_creacion": "2026-03-31T10:00:00",
+                "id_usuario": authenticated_user_id,
+                "id_eps": payload.id_eps,
+            }
+
+    fake_paciente_service = FakePacienteService()
+    monkeypatch.setattr(paciente_module, "paciente_service", fake_paciente_service)
+    monkeypatch.setattr(paciente_module, "supabase", object())
+
+    app = FastAPI()
+    app.include_router(paciente_registration_router, prefix="/api")
+    client = TestClient(app)
+
+    response = client.post(
+        "/api/pacientes/",
+        headers={"Authorization": "Bearer ok-token"},
+        json={
+            "tipo_documento": "CC",
+            "numero_documento": "123",
+            "nombres": "Ana",
+            "apellidos": "Perez",
+            "fecha_nacimiento": "2000-01-01",
+            "telefono": "3000000000",
+            "correo": "ana@example.com",
+            "estado": "ACTIVO",
+            "id_usuario": attacker_user_id,
+            "id_eps": 1,
+        },
+    )
+
+    assert response.status_code == 201
+    assert response.json()["id_usuario"] == auth_user_id
+    assert fake_paciente_service.last_create["payload_id_usuario"] == attacker_user_id
+    assert fake_paciente_service.last_create["authenticated_user_id"] == auth_user_id

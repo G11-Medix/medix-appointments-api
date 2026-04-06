@@ -1,22 +1,28 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 
-from app.api.dependencies.auth import AuthenticatedUserContext, get_authenticated_user_from_state
+from app.api.dependencies.auth import (
+    AuthenticatedTokenContext,
+    AuthenticatedUserContext,
+    get_authenticated_user_from_state,
+    require_authenticated_token_user,
+)
 from app.db.supabase import get_supabase_client
 from app.schemas.paciente import PacienteCreate, PacienteResponse, PacienteUpdate
 from app.services.paciente_service import PacienteService
 
-router = APIRouter(prefix="/pacientes", tags=["Pacientes"])
+protected_router = APIRouter(prefix="/pacientes", tags=["Pacientes"])
+registration_router = APIRouter(prefix="/pacientes", tags=["Pacientes"])
 paciente_service = PacienteService()
 supabase = get_supabase_client()
 
 
-@router.get("/", response_model=list[PacienteResponse])
+@protected_router.get("/", response_model=list[PacienteResponse])
 def list_pacientes(limit: int = Query(default=20, ge=1, le=100)) -> list[PacienteResponse]:
     rows = paciente_service.list_pacientes(supabase=supabase, limit=limit)
     return [PacienteResponse.model_validate(row) for row in rows]
 
 
-@router.get("/{id_paciente}", response_model=PacienteResponse)
+@protected_router.get("/{id_paciente}", response_model=PacienteResponse)
 def get_paciente(id_paciente: int) -> PacienteResponse:
     row = paciente_service.get_paciente(supabase=supabase, id_paciente=id_paciente)
     if not row:
@@ -24,10 +30,10 @@ def get_paciente(id_paciente: int) -> PacienteResponse:
     return PacienteResponse.model_validate(row)
 
 
-@router.post("/", response_model=PacienteResponse, status_code=status.HTTP_201_CREATED)
+@registration_router.post("/", response_model=PacienteResponse, status_code=status.HTTP_201_CREATED)
 def create_paciente(
     payload: PacienteCreate,
-    auth_user: AuthenticatedUserContext = Depends(get_authenticated_user_from_state),
+    auth_user: AuthenticatedTokenContext = Depends(require_authenticated_token_user),
 ) -> PacienteResponse:
     row = paciente_service.create_paciente(
         supabase=supabase,
@@ -39,7 +45,7 @@ def create_paciente(
     return PacienteResponse.model_validate(row)
 
 
-@router.put("/{id_paciente}", response_model=PacienteResponse)
+@protected_router.put("/{id_paciente}", response_model=PacienteResponse)
 def update_paciente(
     id_paciente: int,
     payload: PacienteUpdate,
@@ -60,7 +66,7 @@ def update_paciente(
     return PacienteResponse.model_validate(row)
 
 
-@router.delete("/{id_paciente}", status_code=status.HTTP_204_NO_CONTENT)
+@protected_router.delete("/{id_paciente}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_paciente(id_paciente: int) -> Response:
     existing = paciente_service.get_paciente(supabase=supabase, id_paciente=id_paciente)
     if not existing:
