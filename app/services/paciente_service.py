@@ -1,7 +1,8 @@
 from supabase import Client
 
 from app.repositories.paciente_repository import PacienteRepository
-from app.schemas.paciente import PacienteCreate, PacienteUpdate
+from app.schemas.paciente import PacienteCreate, PacienteUpdate, UserProfileDto
+from app.services.eps_service import EPSService
 
 
 class PacienteService:
@@ -43,3 +44,25 @@ class PacienteService:
 
     def delete_paciente(self, supabase: Client, id_paciente: int) -> None:
         self.repository.delete(supabase=supabase, id_paciente=id_paciente)
+
+    def get_user_profile(
+        self,
+        supabase: Client,
+        id_paciente: int,
+    ) -> UserProfileDto | None:
+
+        row = self.repository.get_user_profile(supabase, id_paciente)
+
+        if not row:
+            return None
+
+        return UserProfileDto(
+            nombres=row["nombres"],
+            apellidos=row["apellidos"],
+            documento=row["numero_documento"],
+            eps=row["EPS"]["nombre"] if row.get("EPS") else "Sin EPS",
+            correo=row.get("correo") or "",
+            telefono=row.get("telefono") or "",
+            correoVerificado=True,
+            telefonoVerificado=True,
+        )

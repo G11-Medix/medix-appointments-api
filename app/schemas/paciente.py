@@ -40,3 +40,14 @@ class PacienteResponse(PacienteBase):
     id_usuario: UUID | None = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class UserProfileDto(BaseModel):
+    nombres: str
+    apellidos: str
+    documento: str
+    eps: str
+    correo: str
+    telefono: str
+    correoVerificado: bool = True
+    telefonoVerificado: bool = True

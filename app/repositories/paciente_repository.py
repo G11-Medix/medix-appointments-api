@@ -42,3 +42,22 @@ class PacienteRepository:
 
     def delete(self, supabase: Client, id_paciente: int) -> None:
         supabase.table("Paciente").delete().eq("id_paciente", id_paciente).execute()
+
+    def get_user_profile(self, supabase: Client, id_paciente: int) -> dict | None:
+        response = (
+            supabase.table("Paciente")
+            .select("""
+                nombres,
+                apellidos,
+                numero_documento,
+                telefono,
+                correo,
+                EPS(nombre)
+            """)
+            .eq("id_paciente", id_paciente)
+            .limit(1)
+            .execute()
+        )
+
+        data = response.data or []
+        return data[0] if data else None

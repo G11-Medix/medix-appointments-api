@@ -47,3 +47,19 @@ def update_cita(id_institucion: int, id_cita: int, payload: CitaUpdate) -> CitaR
 def delete_cita(id_institucion: int, id_cita: int, payload: CitaDelete) -> CitaResponse:
     row = cita_service.delete_cita(id_institucion=id_institucion, id_cita=id_cita, payload=payload)
     return CitaResponse.model_validate(row)
+
+
+@router.get("/", response_model=list[CitaResponse])
+def list_citas(
+    id_institucion: int,
+    id_paciente: int | None = Query(default=None),
+    desde: datetime | None = Query(default=None),
+    hasta: datetime | None = Query(default=None),
+) -> list[CitaResponse]:
+    rows = cita_service.list_citas(
+        id_institucion=id_institucion,
+        id_paciente=id_paciente,
+        desde=desde,
+        hasta=hasta,
+    )
+    return [CitaResponse.model_validate(row) for row in rows]
