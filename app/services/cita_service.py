@@ -21,10 +21,11 @@ class IpsRoute:
 
 
 class CitaService:
-    def __init__(self, client: IpsClient | None = None, settings: Settings | None = None, institucion_service: InstitucionService | None = None) -> None:
+    def __init__(self, client: IpsClient | None = None, settings: Settings | None = None, institucion_service: InstitucionService | None = None, especialidad_service: EspecialidadService | None = None) -> None:
         self.settings = settings
         self.client = client
         self.institucion_service = institucion_service or InstitucionService()
+        self.especialidad_service = especialidad_service or EspecialidadService()
 
     def create_cita(self, id_institucion: int, payload: CitaCreate) -> dict[str, Any]:
         route = self._resolve_route(id_institucion)
@@ -83,22 +84,32 @@ class CitaService:
 
         for inst in instituciones:
             try:
+                
+                id_institucion = inst.get("id_institucion") or inst.get("id")
+
+                if not id_institucion:
+                    print(f"Institución sin id válido: {inst}")
+                    continue
+
+               
+                route = self._resolve_route(id_institucion)
+
                 response = self._client().request(
                     method="GET",
-                    base_url=inst["base_url"],
-                    api_key=inst["api_key"],
+                    base_url=route.base_url,
+                    api_key=route.api_key,
                     path="/api/v1/citas",
                     params={"id_paciente": id_paciente},
                 )
 
                 if isinstance(response, list):
                     for cita in response:
-                        cita["id_institucion"] = inst["id"]
+                        cita["id_institucion"] = id_institucion
 
                     all_citas.extend(response)
 
             except Exception as e:
-                print(f"Error en IPS {inst['id']}: {e}")
+                print(f"Error en IPS {inst.get('id_institucion', 'SIN_ID')}: {e}")
                 continue
 
         return all_citas
