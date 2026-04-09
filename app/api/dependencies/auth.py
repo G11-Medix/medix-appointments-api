@@ -18,24 +18,36 @@ class AuthenticatedUserContext:
     estado: str
 
 
+@dataclass(frozen=True)
+class AuthenticatedTokenContext:
+    id_usuario: UUID
+
+
+def require_authenticated_token_user(
+    request: Request,
+    credentials: HTTPAuthorizationCredentials | None = Security(_bearer_scheme),
+) -> AuthenticatedTokenContext:
+    token = _extract_bearer_token(credentials)
+    supabase = get_supabase_client()
+    user_id = _validate_token(supabase=supabase, token=token)
+
+    try:
+        context = AuthenticatedTokenContext(id_usuario=UUID(user_id))
+    except ValueError as exc:
+        raise _unauthorized("Token inválido") from exc
+
+    request.state.authenticated_user_id = user_id
+    request.state.authenticated_token_user = context
+    return context
+
+
 def require_active_user(
     request: Request,
     credentials: HTTPAuthorizationCredentials | None = Security(_bearer_scheme),
 ) -> AuthenticatedUserContext:
-    if not credentials:
-        raise _unauthorized("Token de acceso requerido")
-
-    if credentials.scheme.lower() != "bearer" or not credentials.credentials:
-        raise _unauthorized("Formato de autorización inválido")
-
-    token = credentials.credentials.strip()
-    if not token:
-        raise _unauthorized("Formato de autorización inválido")
-
+    token_context = require_authenticated_token_user(request=request, credentials=credentials)
     supabase = get_supabase_client()
-    user_id = _validate_token(supabase=supabase, token=token)
-
-    request.state.authenticated_user_id = user_id
+    user_id = str(token_context.id_usuario)
 
     usuario = _get_usuario(supabase=supabase, user_id=user_id)
     if not usuario:
@@ -117,3 +129,16 @@ def _get_usuario(supabase: Client, user_id: str) -> dict | None:
 
 def _unauthorized(detail: str) -> HTTPException:
     return HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=detail)
+
+
+def _extract_bearer_token(credentials: HTTPAuthorizationCredentials | None) -> str:
+    if not credentials:
+        raise _unauthorized("Token de acceso requerido")
+
+    if credentials.scheme.lower() != "bearer" or not credentials.credentials:
+        raise _unauthorized("Formato de autorización inválido")
+
+    token = credentials.credentials.strip()
+    if not token:
+        raise _unauthorized("Formato de autorización inválido")
+    return token

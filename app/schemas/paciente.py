@@ -14,7 +14,7 @@ class PacienteBase(BaseModel):
     correo: str | None = Field(default=None, max_length=150)
     estado: str = Field(min_length=1, max_length=20)
     id_usuario: UUID
-    id_institucion: int
+    id_eps: int
 
 
 class PacienteCreate(PacienteBase):
@@ -31,7 +31,7 @@ class PacienteUpdate(BaseModel):
     correo: str | None = Field(default=None, max_length=150)
     estado: str | None = Field(default=None, min_length=1, max_length=20)
     id_usuario: UUID | None = None
-    id_institucion: int | None = None
+    id_eps: int | None = None
 
 
 class PacienteResponse(PacienteBase):

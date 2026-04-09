@@ -4,7 +4,7 @@ from supabase import Client
 class AuthAccessRepository:
     _paciente_fields = (
         "id_paciente,tipo_documento,numero_documento,nombres,apellidos,fecha_nacimiento,"
-        "telefono,correo,estado,fecha_creacion,id_usuario,id_institucion"
+        "telefono,correo,estado,fecha_creacion,id_usuario,id_eps"
     )
     _usuario_fields = "id_usuario,rol,estado,fecha_creacion"
 

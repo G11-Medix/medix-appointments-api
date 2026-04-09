@@ -4,7 +4,7 @@ from supabase import Client
 class PacienteRepository:
     _select_fields = (
         "id_paciente,tipo_documento,numero_documento,nombres,apellidos,fecha_nacimiento,"
-        "telefono,correo,estado,fecha_creacion,id_usuario,id_institucion"
+        "telefono,correo,estado,fecha_creacion,id_usuario,id_eps"
     )
 
     def list(self, supabase: Client, limit: int = 20) -> list[dict]:

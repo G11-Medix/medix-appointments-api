@@ -1,13 +1,19 @@
 from supabase import Client
 
+from app.repositories.auth_access_repository import AuthAccessRepository
 from app.repositories.paciente_repository import PacienteRepository
 from app.schemas.paciente import PacienteCreate, PacienteUpdate, UserProfileDto
 from app.services.eps_service import EPSService
 
 
 class PacienteService:
-    def __init__(self, repository: PacienteRepository | None = None) -> None:
+    def __init__(
+        self,
+        repository: PacienteRepository | None = None,
+        auth_access_repository: AuthAccessRepository | None = None,
+    ) -> None:
         self.repository = repository or PacienteRepository()
+        self.auth_access_repository = auth_access_repository or AuthAccessRepository()
 
     def list_pacientes(self, supabase: Client, limit: int = 20) -> list[dict]:
         return self.repository.list(supabase=supabase, limit=limit)
@@ -24,6 +30,7 @@ class PacienteService:
         create_data = payload.model_dump(mode="json")
         if authenticated_user_id is not None:
             create_data["id_usuario"] = authenticated_user_id
+            self._ensure_usuario_active(supabase=supabase, user_id=authenticated_user_id)
         return self.repository.create(supabase=supabase, payload=create_data)
 
     def update_paciente(
@@ -66,3 +73,16 @@ class PacienteService:
             correoVerificado=True,
             telefonoVerificado=True,
         )
+    def _ensure_usuario_active(self, supabase: Client, user_id: str) -> dict | None:
+        usuario = self.auth_access_repository.get_usuario_by_id(supabase=supabase, id_usuario=user_id)
+        rol = str((usuario or {}).get("rol") or "PACIENTE").upper()
+        payload = {"rol": rol, "estado": "ACTIVO"}
+        if usuario:
+            return self.auth_access_repository.update_usuario(
+                supabase=supabase,
+                id_usuario=user_id,
+                payload=payload,
+            )
+
+        payload["id_usuario"] = user_id
+        return self.auth_access_repository.create_usuario(supabase=supabase, payload=payload)

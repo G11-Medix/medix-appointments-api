@@ -1,15 +1,13 @@
 from supabase import Client
 
 
-class EPSRepository:
-    def get_by_id(self, supabase: Client, id_eps: int) -> dict | None:
+class EpsRepository:
+    def list(self, supabase: Client, limit: int = 20) -> list[dict]:
         response = (
             supabase.table("EPS")
-            .select("id_eps,nombre")
-            .eq("id_eps", id_eps)
-            .limit(1)
+            .select("id_eps,nombre,codigo,estado")
+            .order("id_eps")
+            .limit(limit)
             .execute()
         )
-
-        data = response.data or []
-        return data[0] if data else None
+        return response.data or []

@@ -1,11 +1,11 @@
 from supabase import Client
-from app.repositories.eps_repository import EPSRepository
+
+from app.repositories.eps_repository import EpsRepository
 
 
-class EPSService:
-    def __init__(self, repository: EPSRepository | None = None) -> None:
-        self.repository = repository or EPSRepository()
+class EpsService:
+    def __init__(self, repository: EpsRepository | None = None) -> None:
+        self.repository = repository or EpsRepository()
 
-    def get_eps_nombre(self, supabase: Client, id_eps: int) -> str:
-        eps = self.repository.get_by_id(supabase, id_eps)
-        return eps["nombre"] if eps else "Sin EPS"
+    def list_eps(self, supabase: Client, limit: int = 20) -> list[dict]:
+        return self.repository.list(supabase=supabase, limit=limit)
