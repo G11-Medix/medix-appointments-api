@@ -3,7 +3,7 @@ from supabase import Client
 from app.repositories.auth_access_repository import AuthAccessRepository
 from app.repositories.paciente_repository import PacienteRepository
 from app.schemas.paciente import PacienteCreate, PacienteUpdate, UserProfileDto
-from app.services.eps_service import EPSService
+
 
 
 class PacienteService:
