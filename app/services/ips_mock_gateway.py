@@ -6,7 +6,7 @@ from app.core.config import Settings, get_settings
 from app.services.ips_route_resolver import IpsRoute, IpsRouteResolver
 
 
-class EpsMockGateway:
+class IpsMockGateway:
     def __init__(
         self,
         client: IpsClient | None = None,

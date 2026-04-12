@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from types import SimpleNamespace
 
-from app.services.eps_mock_gateway import EpsMockGateway
+from app.services.ips_mock_gateway import IpsMockGateway
 from app.services.ips_route_resolver import IpsRouteResolver
 
 
@@ -40,17 +40,17 @@ class DummyIpsClient:
         }
 
 
-def build_gateway() -> tuple[EpsMockGateway, DummyIpsClient]:
+def build_gateway() -> tuple[IpsMockGateway, DummyIpsClient]:
     settings = SimpleNamespace(
         ips_routes_json='{"1":{"base_url":"http://ips","api_key":"key"}}',
         ips_timeout_seconds=10,
     )
     client = DummyIpsClient()
     resolver = IpsRouteResolver(settings=settings)
-    return EpsMockGateway(client=client, settings=settings, route_resolver=resolver), client
+    return IpsMockGateway(client=client, settings=settings, route_resolver=resolver), client
 
 
-def test_gateway_maps_eps_requests() -> None:
+def test_gateway_maps_ips_mock_requests() -> None:
     gateway, client = build_gateway()
     route = gateway.get_route(1)
 

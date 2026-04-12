@@ -14,13 +14,13 @@ from app.schemas.assistant import (
     AssistantPatientResponse,
     AssistantSpecialtyResponse,
 )
-from app.services.eps_mock_gateway import EpsMockGateway
+from app.services.ips_mock_gateway import IpsMockGateway
 from app.services.ips_route_resolver import IpsRoute
 
 
 class AssistantAppointmentsService:
-    def __init__(self, gateway: EpsMockGateway | None = None) -> None:
-        self.gateway = gateway or EpsMockGateway()
+    def __init__(self, gateway: IpsMockGateway | None = None) -> None:
+        self.gateway = gateway or IpsMockGateway()
 
     def list_specialties(self) -> list[AssistantSpecialtyResponse]:
         by_id: dict[int, AssistantSpecialtyResponse] = {}
