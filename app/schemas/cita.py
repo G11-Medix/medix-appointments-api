@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class CitaCreate(BaseModel):
@@ -30,18 +30,8 @@ class CitaResponse(BaseModel):
 
 class CitaAppResponse(BaseModel):
     id: int
-    nombre_ins: str
+    nombre_institucion: str = Field(serialization_alias="nombre_ins")
     especialidad: str
     fecha_hora_cupo: datetime
-    
-class CitaAppConfirmationResponse(BaseModel):
-    doctorName: str
-    fecha_hora_cupo: datetime
-    especialidad: str
-    clinicName: str
-    address: str
-    lat: float
-    lon: float
-    title: str | None
-    message: str | None
-    address: str = "SUCCESS"
+
+    model_config = ConfigDict(populate_by_name=True)

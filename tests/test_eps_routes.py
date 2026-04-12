@@ -16,10 +16,9 @@ def client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
                 {"id_eps": 2, "nombre": "Sura", "codigo": "EPS002", "estado": "ACTIVO"},
             ]
 
-    monkeypatch.setattr(eps_module, "eps_service", FakeEpsService())
-    monkeypatch.setattr(eps_module, "supabase", "fake-supabase")
-
     app = FastAPI()
+    app.dependency_overrides[eps_module.get_eps_service] = lambda: FakeEpsService()
+    app.dependency_overrides[eps_module.get_supabase_client] = lambda: "fake-supabase"
     app.include_router(eps_module.router, prefix="/api")
     return TestClient(app)
 

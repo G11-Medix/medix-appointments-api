@@ -57,8 +57,8 @@ def client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
             assert payload.motivo is not None
             return _cita_response(estado="cancelled")
 
-    monkeypatch.setattr(cita_module, "cita_service", FakeCitaService())
     app = FastAPI()
+    app.dependency_overrides[cita_module.get_cita_service] = lambda: FakeCitaService()
     app.include_router(cita_module.router, prefix="/api")
     return TestClient(app)
 

@@ -97,11 +97,11 @@ def auth_routes_client(monkeypatch: pytest.MonkeyPatch) -> tuple[TestClient, Fak
     fake_service = FakeAuthAccessService()
 
     monkeypatch.setattr(auth_module, "get_supabase_client", lambda: fake_supabase)
-    monkeypatch.setattr(auth_routes_module, "auth_access_service", fake_service)
-    monkeypatch.setattr(auth_routes_module, "supabase", object())
-    monkeypatch.setattr(auth_routes_module, "admin_supabase", object())
 
     app = FastAPI()
+    app.dependency_overrides[auth_routes_module.get_auth_access_service] = lambda: fake_service
+    app.dependency_overrides[auth_routes_module.get_supabase_client] = lambda: object()
+    app.dependency_overrides[auth_routes_module.get_supabase_admin_client] = lambda: object()
     app.include_router(auth_public_router)
     app.include_router(api_router, prefix="/api")
     return TestClient(app), fake_service

@@ -1,4 +1,5 @@
 from collections.abc import Callable
+import logging
 
 from fastapi import Request
 from starlette.responses import Response
@@ -8,6 +9,7 @@ from app.services.audit_service import AuditService
 
 AUDITED_PREFIX = "/api/"
 EXCLUDED_PATHS = {"/", "/docs", "/redoc", "/openapi.json"}
+LOGGER = logging.getLogger(__name__)
 
 
 def build_audit_middleware(supabase: Client) -> Callable:
@@ -39,7 +41,7 @@ def build_audit_middleware(supabase: Client) -> Callable:
                     detalle=detalle,
                 )
             except Exception:
-                pass
+                LOGGER.exception("No fue posible registrar auditoria para %s", tipo_accion)
 
             return response
         except Exception as exc:
@@ -62,7 +64,7 @@ def build_audit_middleware(supabase: Client) -> Callable:
                     detalle=detalle,
                 )
             except Exception:
-                pass
+                LOGGER.exception("No fue posible registrar auditoria fallida para %s", tipo_accion)
 
             raise
 

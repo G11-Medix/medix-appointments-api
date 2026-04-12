@@ -2,8 +2,7 @@ from supabase import Client
 
 from app.repositories.auth_access_repository import AuthAccessRepository
 from app.repositories.paciente_repository import PacienteRepository
-from app.schemas.paciente import PacienteCreate, PacienteUpdate, UserProfileDto
-
+from app.schemas.paciente import PacienteCreate, PacienteUpdate, UserProfileResponse
 
 
 class PacienteService:
@@ -56,23 +55,22 @@ class PacienteService:
         self,
         supabase: Client,
         id_paciente: int,
-    ) -> UserProfileDto | None:
-
+    ) -> UserProfileResponse | None:
         row = self.repository.get_user_profile(supabase, id_paciente)
-
         if not row:
             return None
 
-        return UserProfileDto(
+        return UserProfileResponse(
             nombres=row["nombres"],
             apellidos=row["apellidos"],
             documento=row["numero_documento"],
             eps=row["EPS"]["nombre"] if row.get("EPS") else "Sin EPS",
             correo=row.get("correo") or "",
             telefono=row.get("telefono") or "",
-            correoVerificado=True,
-            telefonoVerificado=True,
+            correo_verificado=True,
+            telefono_verificado=True,
         )
+
     def _ensure_usuario_active(self, supabase: Client, user_id: str) -> dict | None:
         usuario = self.auth_access_repository.get_usuario_by_id(supabase=supabase, id_usuario=user_id)
         rol = str((usuario or {}).get("rol") or "PACIENTE").upper()
