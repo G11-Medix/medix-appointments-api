@@ -1,0 +1,21 @@
+services:
+  medix_appointments_api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: medix_appointments_api
+    env_file:
+      - ./.env
+    environment:
+      IPS_ROUTES_JSON: >-
+        {"1":{"base_url":"http://ips_clinica_santa_helena:4011","api_key":"ips-csh-key"},"2":{"base_url":"http://ips_hospital_nuevo_horizonte:4012","api_key":"ips-hnh-key"},"3":{"base_url":"http://ips_clinica_prado_caribe:4013","api_key":"ips-cpc-key"}}
+      IPS_TIMEOUT_SECONDS: "10"
+    ports:
+      - "8000:8000"
+    networks:
+      - medix_net
+
+networks:
+  medix_net:
+    name: medix_net
+    external: true

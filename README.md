@@ -49,6 +49,12 @@ http://localhost:8000/redoc
 pytest
 ```
 
+### Build and Run (Docker Compose)
+
+```bash
+docker compose up --build
+```
+
 ### Build and Run (Docker)
 
 ```bash
