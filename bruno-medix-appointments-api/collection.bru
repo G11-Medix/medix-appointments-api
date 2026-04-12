@@ -12,6 +12,7 @@ vars:pre-request {
 
   ID_INSTITUCION: 1
   ID_EPS: 1
+  ID_ESPECIALIDAD: 1
 
   ID_PACIENTE: 1
   ID_PACIENTE_IPS: 1
@@ -23,22 +24,28 @@ vars:pre-request {
   PACIENTE_TELEFONO: 3001234567
   PACIENTE_CORREO: juan.perez@example.com
   PACIENTE_ESTADO: ACTIVO
-  PACIENTE_ID_USUARIO: 8f41cb7d-0f6f-4f03-b4ec-55a3ec6af111
 
   ID_CITA: 1
   ID_PRESTADOR: 1
   FECHA_HORA_CITA: 2026-04-01T08:00:00
   FECHA_HORA_REPROGRAMACION: 2026-04-01T09:00:00
+  FECHA_DISPONIBILIDAD: 2026-04-10
+  DIAS_DISPONIBILIDAD: 7
+  HORA_CITA_ASSISTANT: 10:00:00
+  NUEVA_FECHA_CITA_ASSISTANT: 2026-04-11
+  NUEVA_HORA_CITA_ASSISTANT: 14:00:00
   FECHA_DESDE: 2026-04-01T00:00:00
   FECHA_HASTA: 2026-04-30T23:59:59
   MOTIVO_CANCELACION: Paciente no asistira
+  TELEFONO_LOGIN: 3001234567
+  ROL_ACCESO: paciente
 }
 
 docs {
   ### Requisitos
   - Levantar `medix-appointments-api` en `http://localhost:8000`.
-  - Configurar `IPS_ROUTES_JSON` en `.env` para enrutar `id_institucion` a IPS mock.
-  - Levantar `eps-mock-service` para que funcionen endpoints de citas.
+  - Configurar `IPS_ROUTES_JSON` en `.env` para enrutar `id_institucion` a la IPS mock correspondiente.
+  - Levantar `eps-mock-service` como servicio de IPS mock para que funcionen endpoints de citas y disponibilidad.
   - Crear `bruno-medix-appointments-api/.env` a partir de `bruno-medix-appointments-api/.env.example`.
   - Configurar `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_TEST_EMAIL` y `SUPABASE_TEST_PASSWORD` en ese archivo local para obtener tokens de prueba.
 
@@ -46,6 +53,7 @@ docs {
   - Si creas un paciente nuevo, actualiza `ID_PACIENTE` con el `id_paciente` retornado.
   - Para endpoints de citas usa `ID_PACIENTE_IPS` (paciente existente en la IPS mock).
   - Si creas una cita nueva, actualiza `ID_CITA` con el `id` retornado.
+  - Para endpoints assistant usa `ID_ESPECIALIDAD`, `FECHA_DISPONIBILIDAD`, `HORA_CITA_ASSISTANT`, `NUEVA_FECHA_CITA_ASSISTANT` y `NUEVA_HORA_CITA_ASSISTANT`.
 
   ### Flujo de autenticación
   - Ejecuta `Post Supabase Login` para obtener un `access_token`.

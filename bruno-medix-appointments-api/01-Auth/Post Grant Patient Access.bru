@@ -1,0 +1,22 @@
+meta {
+  name: Post Grant Patient Access
+  type: http
+  seq: 24
+}
+
+post {
+  url: {{API_URL}}{{API_PREFIX}}/admin/pacientes/{{ID_PACIENTE}}/grant-access
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{ACCESS_TOKEN}}
+}
+
+body:json {
+  {
+    "telefono": "{{TELEFONO_LOGIN}}",
+    "rol": "{{ROL_ACCESO}}"
+  }
+}

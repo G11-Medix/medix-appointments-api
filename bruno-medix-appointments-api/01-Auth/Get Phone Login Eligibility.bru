@@ -1,0 +1,11 @@
+meta {
+  name: Get Phone Login Eligibility
+  type: http
+  seq: 23
+}
+
+get {
+  url: {{API_URL}}{{API_PREFIX}}/auth/eligibility/{{TELEFONO_LOGIN}}
+  body: none
+  auth: none
+}

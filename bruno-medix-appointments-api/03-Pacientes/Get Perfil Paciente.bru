@@ -1,0 +1,15 @@
+meta {
+  name: Get Perfil Paciente
+  type: http
+  seq: 21
+}
+
+get {
+  url: {{API_URL}}{{API_PREFIX}}/pacientes/{{ID_PACIENTE}}/profile
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{ACCESS_TOKEN}}
+}
