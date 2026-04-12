@@ -1,27 +1,17 @@
 import logging
-import json
-from collections.abc import Mapping
-from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
 from supabase import Client
 
-from fastapi import HTTPException, status
-
 from app.clients.ips_client import IpsClient
 from app.core.config import Settings, get_settings
 from app.schemas.cita import CitaCreate, CitaDelete, CitaUpdate, CitaAppResponse
 from app.services.institucion_service import InstitucionService
+from app.services.ips_route_resolver import IpsRoute, IpsRouteResolver
 from app.services.especialidad_service import EspecialidadService
 
 LOGGER = logging.getLogger(__name__)
-
-
-@dataclass(frozen=True)
-class IpsRoute:
-    base_url: str
-    api_key: str
 
 
 class CitaService:
@@ -31,12 +21,14 @@ class CitaService:
         settings: Settings | None = None,
         institucion_service: InstitucionService | None = None,
         especialidad_service: EspecialidadService | None = None,
+        route_resolver: IpsRouteResolver | None = None,
         logger: logging.Logger | None = None,
     ) -> None:
         self.settings = settings
         self.client = client
         self.institucion_service = institucion_service or InstitucionService()
         self.especialidad_service = especialidad_service or EspecialidadService()
+        self.route_resolver = route_resolver or IpsRouteResolver(settings=settings)
         self.logger = logger or LOGGER
 
     def create_cita(self, id_institucion: int, payload: CitaCreate) -> dict[str, Any]:
@@ -178,14 +170,7 @@ class CitaService:
         )
 
     def _resolve_route(self, id_institucion: int) -> IpsRoute:
-        routes = _parse_routes(self._settings().ips_routes_json)
-        route = routes.get(id_institucion)
-        if route is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"No hay configuración IPS para id_institucion={id_institucion}",
-            )
-        return route
+        return self.route_resolver.get_route(id_institucion)
 
     def _settings(self) -> Settings:
         if self.settings is None:
@@ -196,48 +181,3 @@ class CitaService:
         if self.client is None:
             self.client = IpsClient(timeout_seconds=self._settings().ips_timeout_seconds)
         return self.client
-
-
-def _parse_routes(raw_json: str) -> dict[int, IpsRoute]:
-    try:
-        data = json.loads(raw_json or "{}")
-    except json.JSONDecodeError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="IPS_ROUTES_JSON no es un JSON válido",
-        ) from exc
-
-    if not isinstance(data, Mapping):
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="IPS_ROUTES_JSON debe ser un objeto con id_institucion como llave",
-        )
-
-    routes: dict[int, IpsRoute] = {}
-    for key, value in data.items():
-        if not isinstance(key, str) or not key.isdigit():
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="IPS_ROUTES_JSON tiene llaves inválidas",
-            )
-        if not isinstance(value, Mapping):
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="IPS_ROUTES_JSON tiene entradas inválidas",
-            )
-
-        base_url = value.get("base_url")
-        api_key = value.get("api_key")
-        if not isinstance(base_url, str) or not base_url.strip():
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="IPS_ROUTES_JSON requiere base_url por institución",
-            )
-        if not isinstance(api_key, str) or not api_key.strip():
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="IPS_ROUTES_JSON requiere api_key por institución",
-            )
-
-        routes[int(key)] = IpsRoute(base_url=base_url, api_key=api_key)
-    return routes
