@@ -70,7 +70,7 @@ def _build_cita_response(estado: str = "scheduled") -> dict:
 
 
 @pytest.fixture
-def auth_client(monkeypatch: pytest.MonkeyPatch) -> tuple[TestClient, str]:
+def auth_client(monkeypatch: pytest.MonkeyPatch) -> tuple[TestClient, str, object]:
     auth_user_id = str(uuid4())
     fake_supabase = FakeSupabase(
         users={auth_user_id: {"id_usuario": auth_user_id, "rol": "PACIENTE", "estado": "ACTIVO"}},
@@ -121,7 +121,6 @@ def auth_client(monkeypatch: pytest.MonkeyPatch) -> tuple[TestClient, str]:
 
         def create_paciente(self, supabase, payload, authenticated_user_id=None):  # noqa: ANN001
             self.last_create = {
-                "payload_id_usuario": str(payload.id_usuario),
                 "authenticated_user_id": authenticated_user_id,
             }
             return {
@@ -183,21 +182,22 @@ def auth_client(monkeypatch: pytest.MonkeyPatch) -> tuple[TestClient, str]:
             return _build_cita_response(estado="cancelled")
 
     fake_paciente_service = FakePacienteService()
-    monkeypatch.setattr(institucion_module, "institucion_service", FakeInstitucionService())
-    monkeypatch.setattr(institucion_module, "supabase", object())
-    monkeypatch.setattr(paciente_module, "paciente_service", fake_paciente_service)
-    monkeypatch.setattr(paciente_module, "supabase", object())
-    monkeypatch.setattr(cita_module, "cita_service", FakeCitaService())
 
     app = FastAPI()
+    app.dependency_overrides[institucion_module.get_institucion_service] = lambda: FakeInstitucionService()
+    app.dependency_overrides[institucion_module.get_supabase_client] = lambda: object()
+    app.dependency_overrides[paciente_module.get_paciente_service] = lambda: fake_paciente_service
+    app.dependency_overrides[paciente_module.get_supabase_client] = lambda: object()
+    app.dependency_overrides[cita_module.get_cita_service] = lambda: FakeCitaService()
+    app.dependency_overrides[cita_module.get_supabase_client] = lambda: object()
     app.include_router(paciente_registration_router, prefix="/api")
     app.include_router(api_router, prefix="/api")
     client = TestClient(app)
-    return client, auth_user_id
+    return client, auth_user_id, fake_paciente_service
 
 
-def test_api_requires_token_in_each_router(auth_client: tuple[TestClient, str]) -> None:
-    client, _ = auth_client
+def test_api_requires_token_in_each_router(auth_client: tuple[TestClient, str, object]) -> None:
+    client, _, _service = auth_client
 
     institucion_resp = client.get("/api/instituciones/")
     paciente_resp = client.get("/api/pacientes/")
@@ -208,8 +208,8 @@ def test_api_requires_token_in_each_router(auth_client: tuple[TestClient, str]) 
     assert cita_resp.status_code == 401
 
 
-def test_api_accepts_valid_token_in_representative_endpoints(auth_client: tuple[TestClient, str]) -> None:
-    client, _ = auth_client
+def test_api_accepts_valid_token_in_representative_endpoints(auth_client: tuple[TestClient, str, object]) -> None:
+    client, _, _service = auth_client
     headers = {"Authorization": "Bearer ok-token"}
 
     institucion_resp = client.get("/api/instituciones/", headers=headers)
@@ -220,13 +220,11 @@ def test_api_accepts_valid_token_in_representative_endpoints(auth_client: tuple[
 
 
 def test_paciente_create_forces_id_usuario_from_token(
-    auth_client: tuple[TestClient, str],
+    auth_client: tuple[TestClient, str, object],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    client, auth_user_id = auth_client
+    client, auth_user_id, captured_service = auth_client
     headers = {"Authorization": "Bearer ok-token"}
-    attacker_user_id = str(uuid4())
-    captured_service = paciente_module.paciente_service
     assert hasattr(captured_service, "last_create")
 
     response = client.post(
@@ -241,22 +239,42 @@ def test_paciente_create_forces_id_usuario_from_token(
             "telefono": "3000000000",
             "correo": "ana@example.com",
             "estado": "ACTIVO",
-            "id_usuario": attacker_user_id,
             "id_eps": 1,
         },
     )
 
     assert response.status_code == 201
     assert response.json()["id_usuario"] == auth_user_id
-    assert captured_service.last_create["payload_id_usuario"] == attacker_user_id
     assert captured_service.last_create["authenticated_user_id"] == auth_user_id
 
 
-def test_paciente_update_forces_id_usuario_from_token(auth_client: tuple[TestClient, str]) -> None:
-    client, auth_user_id = auth_client
+def test_paciente_create_rejects_extra_id_usuario_field(auth_client: tuple[TestClient, str, object]) -> None:
+    client, _, _service = auth_client
+
+    response = client.post(
+        "/api/pacientes/",
+        headers={"Authorization": "Bearer ok-token"},
+        json={
+            "tipo_documento": "CC",
+            "numero_documento": "123",
+            "nombres": "Ana",
+            "apellidos": "Perez",
+            "fecha_nacimiento": "2000-01-01",
+            "telefono": "3000000000",
+            "correo": "ana@example.com",
+            "estado": "ACTIVO",
+            "id_eps": 1,
+            "id_usuario": str(uuid4()),
+        },
+    )
+
+    assert response.status_code == 422
+
+
+def test_paciente_update_forces_id_usuario_from_token(auth_client: tuple[TestClient, str, object]) -> None:
+    client, auth_user_id, captured_service = auth_client
     headers = {"Authorization": "Bearer ok-token"}
     attacker_user_id = str(uuid4())
-    captured_service = paciente_module.paciente_service
     assert hasattr(captured_service, "last_update")
 
     response = client.put(
@@ -275,7 +293,6 @@ def test_paciente_create_allows_valid_token_without_existing_usuario(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     auth_user_id = str(uuid4())
-    attacker_user_id = str(uuid4())
     fake_supabase = FakeSupabase(
         users={},
         token_to_user_id={"ok-token": auth_user_id},
@@ -288,7 +305,6 @@ def test_paciente_create_allows_valid_token_without_existing_usuario(
 
         def create_paciente(self, supabase, payload, authenticated_user_id=None):  # noqa: ANN001
             self.last_create = {
-                "payload_id_usuario": str(payload.id_usuario),
                 "authenticated_user_id": authenticated_user_id,
             }
             return {
@@ -307,10 +323,10 @@ def test_paciente_create_allows_valid_token_without_existing_usuario(
             }
 
     fake_paciente_service = FakePacienteService()
-    monkeypatch.setattr(paciente_module, "paciente_service", fake_paciente_service)
-    monkeypatch.setattr(paciente_module, "supabase", object())
 
     app = FastAPI()
+    app.dependency_overrides[paciente_module.get_paciente_service] = lambda: fake_paciente_service
+    app.dependency_overrides[paciente_module.get_supabase_client] = lambda: object()
     app.include_router(paciente_registration_router, prefix="/api")
     client = TestClient(app)
 
@@ -326,12 +342,10 @@ def test_paciente_create_allows_valid_token_without_existing_usuario(
             "telefono": "3000000000",
             "correo": "ana@example.com",
             "estado": "ACTIVO",
-            "id_usuario": attacker_user_id,
             "id_eps": 1,
         },
     )
 
     assert response.status_code == 201
     assert response.json()["id_usuario"] == auth_user_id
-    assert fake_paciente_service.last_create["payload_id_usuario"] == attacker_user_id
     assert fake_paciente_service.last_create["authenticated_user_id"] == auth_user_id

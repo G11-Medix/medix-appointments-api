@@ -13,12 +13,11 @@ class PacienteBase(BaseModel):
     telefono: str | None = Field(default=None, max_length=20)
     correo: str | None = Field(default=None, max_length=150)
     estado: str = Field(min_length=1, max_length=20)
-    id_usuario: UUID
     id_eps: int
 
 
 class PacienteCreate(PacienteBase):
-    pass
+    model_config = ConfigDict(extra="forbid")
 
 
 class PacienteUpdate(BaseModel):
@@ -40,3 +39,16 @@ class PacienteResponse(PacienteBase):
     id_usuario: UUID | None = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class UserProfileResponse(BaseModel):
+    nombres: str
+    apellidos: str
+    documento: str
+    eps: str
+    correo: str
+    telefono: str
+    correo_verificado: bool = Field(default=True, serialization_alias="correoVerificado")
+    telefono_verificado: bool = Field(default=True, serialization_alias="telefonoVerificado")
+
+    model_config = ConfigDict(populate_by_name=True)
