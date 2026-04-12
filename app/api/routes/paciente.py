@@ -7,7 +7,7 @@ from app.api.dependencies.auth import (
     require_authenticated_token_user,
 )
 from app.db.supabase import get_supabase_client
-from app.schemas.paciente import PacienteCreate, PacienteResponse, PacienteUpdate
+from app.schemas.paciente import PacienteCreate, PacienteResponse, PacienteUpdate, UserProfileDto
 from app.services.paciente_service import PacienteService
 
 protected_router = APIRouter(prefix="/pacientes", tags=["Pacientes"])
@@ -28,6 +28,17 @@ def get_paciente(id_paciente: int) -> PacienteResponse:
     if not row:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Paciente no encontrado")
     return PacienteResponse.model_validate(row)
+
+
+@protected_router.get("/{id_paciente}/profile", response_model=UserProfileDto)
+def get_paciente_profile(id_paciente: int) -> UserProfileDto:
+    profile = paciente_service.get_user_profile(
+        supabase=supabase,
+        id_paciente=id_paciente,
+    )
+    if not profile:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Paciente no encontrado")
+    return profile
 
 
 @registration_router.post("/", response_model=PacienteResponse, status_code=status.HTTP_201_CREATED)
