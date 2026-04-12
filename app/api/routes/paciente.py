@@ -9,8 +9,11 @@ from app.api.dependencies.auth import (
     get_authenticated_user_from_state,
     require_authenticated_token_user,
 )
+from app.api.routes.assistant import get_assistant_service
 from app.db.supabase import get_supabase_client
+from app.schemas.assistant import AssistantPatientResponse
 from app.schemas.paciente import PacienteCreate, PacienteResponse, PacienteUpdate, UserProfileResponse
+from app.services.assistant_appointments_service import AssistantAppointmentsService
 from app.services.paciente_service import PacienteService
 
 protected_router = APIRouter(prefix="/pacientes", tags=["Pacientes"])
@@ -29,6 +32,18 @@ def list_pacientes(
 ) -> list[PacienteResponse]:
     rows = service.list_pacientes(supabase=supabase, limit=limit)
     return [PacienteResponse.model_validate(row) for row in rows]
+
+
+@protected_router.get("/buscar", response_model=AssistantPatientResponse)
+def find_paciente_by_document(
+    tipo_documento: str = Query(..., min_length=1),
+    numero_documento: str = Query(..., min_length=1),
+    assistant_service: Annotated[AssistantAppointmentsService, Depends(get_assistant_service)] = None,
+) -> AssistantPatientResponse:
+    return assistant_service.find_patient_by_document(
+        tipo_documento=tipo_documento,
+        numero_documento=numero_documento,
+    )
 
 
 @protected_router.get("/{id_paciente}", response_model=PacienteResponse)

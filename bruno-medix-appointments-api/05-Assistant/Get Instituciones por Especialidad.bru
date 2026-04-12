@@ -1,0 +1,15 @@
+meta {
+  name: Get Instituciones por Especialidad
+  type: http
+  seq: 15
+}
+
+get {
+  url: {{API_URL}}{{API_PREFIX}}/instituciones/?id_especialidad={{ID_ESPECIALIDAD}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{ACCESS_TOKEN}}
+}

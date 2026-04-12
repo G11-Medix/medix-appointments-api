@@ -1,0 +1,15 @@
+meta {
+  name: Get Buscar Paciente
+  type: http
+  seq: 20
+}
+
+get {
+  url: {{API_URL}}{{API_PREFIX}}/pacientes/buscar?tipo_documento={{PACIENTE_TIPO_DOCUMENTO}}&numero_documento={{PACIENTE_NUMERO_DOCUMENTO}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{ACCESS_TOKEN}}
+}

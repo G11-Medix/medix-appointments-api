@@ -1,0 +1,25 @@
+meta {
+  name: Post Agendar Cita Assistant
+  type: http
+  seq: 17
+}
+
+post {
+  url: {{API_URL}}{{API_PREFIX}}/citas/agendar
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{ACCESS_TOKEN}}
+}
+
+body:json {
+  {
+    "id_paciente": {{ID_PACIENTE_IPS}},
+    "id_institucion": {{ID_INSTITUCION}},
+    "id_especialidad": {{ID_ESPECIALIDAD}},
+    "fecha": "{{FECHA_DISPONIBILIDAD}}",
+    "hora": "{{HORA_CITA_ASSISTANT}}"
+  }
+}

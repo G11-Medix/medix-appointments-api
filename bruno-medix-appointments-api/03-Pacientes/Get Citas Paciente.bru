@@ -1,0 +1,15 @@
+meta {
+  name: Get Citas Paciente
+  type: http
+  seq: 22
+}
+
+get {
+  url: {{API_URL}}{{API_PREFIX}}/pacientes/{{ID_PACIENTE}}/citas
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{ACCESS_TOKEN}}
+}
