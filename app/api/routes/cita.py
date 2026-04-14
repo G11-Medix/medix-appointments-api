@@ -75,13 +75,25 @@ def delete_cita(
     return CitaResponse.model_validate(row)
 
 
+# @patient_router.get("/{id_paciente}/citas", response_model=list[CitaAppResponse])
+# def get_all_citas_by_paciente(
+#     id_paciente: int,
+#     service: Annotated[CitaService, Depends(get_cita_service)] = None,
+#     supabase: Client = Depends(get_supabase_client),
+# ) -> list[CitaAppResponse]:
+#     return service.list_citas_app_by_paciente(
+#         supabase=supabase,
+#         id_paciente=id_paciente,
+#     )
+
 @patient_router.get("/{id_paciente}/citas", response_model=list[CitaAppResponse])
 def get_all_citas_by_paciente(
     id_paciente: int,
     service: Annotated[CitaService, Depends(get_cita_service)] = None,
     supabase: Client = Depends(get_supabase_client),
 ) -> list[CitaAppResponse]:
-    return service.list_citas_app_by_paciente(
+    return service.list_citas_app_by_paciente_doc(
         supabase=supabase,
         id_paciente=id_paciente,
     )
+

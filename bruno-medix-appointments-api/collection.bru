@@ -9,12 +9,10 @@ vars:pre-request {
   SUPABASE_ANON_KEY: {{process.env.SUPABASE_ANON_KEY}}
   SUPABASE_TEST_EMAIL: {{process.env.SUPABASE_TEST_EMAIL}}
   SUPABASE_TEST_PASSWORD: {{process.env.SUPABASE_TEST_PASSWORD}}
-
   ID_INSTITUCION: 1
   ID_EPS: 1
   ID_ESPECIALIDAD: 1
-
-  ID_PACIENTE: 1
+  ID_PACIENTE: 18
   ID_PACIENTE_IPS: 1
   PACIENTE_TIPO_DOCUMENTO: CC
   PACIENTE_NUMERO_DOCUMENTO: 1100101101
@@ -24,7 +22,6 @@ vars:pre-request {
   PACIENTE_TELEFONO: 3001234567
   PACIENTE_CORREO: juan.perez@example.com
   PACIENTE_ESTADO: ACTIVO
-
   ID_CITA: 1
   ID_PRESTADOR: 1
   FECHA_HORA_CITA: 2026-04-01T08:00:00
@@ -48,13 +45,13 @@ docs {
   - Levantar `eps-mock-service` como servicio de IPS mock para que funcionen endpoints de citas y disponibilidad.
   - Crear `bruno-medix-appointments-api/.env` a partir de `bruno-medix-appointments-api/.env.example`.
   - Configurar `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_TEST_EMAIL` y `SUPABASE_TEST_PASSWORD` en ese archivo local para obtener tokens de prueba.
-
+  
   ### Nota sobre IDs
   - Si creas un paciente nuevo, actualiza `ID_PACIENTE` con el `id_paciente` retornado.
   - Para endpoints de citas usa `ID_PACIENTE_IPS` (paciente existente en la IPS mock).
   - Si creas una cita nueva, actualiza `ID_CITA` con el `id` retornado.
   - Para endpoints assistant usa `ID_ESPECIALIDAD`, `FECHA_DISPONIBILIDAD`, `HORA_CITA_ASSISTANT`, `NUEVA_FECHA_CITA_ASSISTANT` y `NUEVA_HORA_CITA_ASSISTANT`.
-
+  
   ### Flujo de autenticación
   - Ejecuta `Post Supabase Login` para obtener un `access_token`.
   - Usa el valor de `access_token` como `Authorization: Bearer <token>` en los endpoints de `/api/*`.
