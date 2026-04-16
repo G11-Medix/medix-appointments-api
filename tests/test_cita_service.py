@@ -41,6 +41,33 @@ class DummyIpsClient:
                     }
                 ],
             }
+        if path == "/fhir/Patient":
+            identifier = (kwargs.get("params") or {}).get("identifier")
+            if identifier == "urn:medix:document:cc|123":
+                return {
+                    "resourceType": "Bundle",
+                    "type": "searchset",
+                    "entry": [
+                        {
+                            "resource": {
+                                "resourceType": "Patient",
+                                "id": "5",
+                                "active": True,
+                                "identifier": [
+                                    {
+                                        "system": "urn:medix:document:cc",
+                                        "value": "123",
+                                        "type": {"text": "CC"},
+                                    }
+                                ],
+                                "name": [{"family": "Demo", "given": ["Paciente"]}],
+                                "birthDate": "2000-01-01",
+                                "meta": {"lastUpdated": "2026-04-01T08:00:00"},
+                            }
+                        }
+                    ],
+                }
+            return {"resourceType": "Bundle", "type": "searchset", "entry": []}
         if path == "/fhir/Appointment" and kwargs["method"] == "GET":
             return {
                 "resourceType": "Bundle",
@@ -206,3 +233,47 @@ def test_invalid_routes_json_returns_500() -> None:
         service.get_cita(id_institucion=1, id_cita=1)
 
     assert exc.value.status_code == 500
+
+
+def test_list_citas_app_by_paciente_doc_uses_fhir_patient_lookup() -> None:
+    client = DummyIpsClient()
+
+    class FakeInstitucionService:
+        def list_instituciones(self, supabase):  # noqa: ANN001
+            return [{"id_institucion": 3, "nombre": "IPS Demo"}]
+
+    class FakeEspecialidadService:
+        def list_especialidades(self, supabase):  # noqa: ANN001
+            return [{"id_especialidad": 302, "nombre": "Cardiologia"}]
+
+    class FakePacienteService:
+        def get_paciente(self, supabase, id_paciente: int):  # noqa: ANN001
+            assert id_paciente == 5
+            return {"id_paciente": 5, "tipo_documento": "CC", "numero_documento": "123"}
+
+    service = CitaService(
+        client=client,
+        settings=SimpleNamespace(
+            ips_routes_json='{"3":{"base_url":"http://localhost:4013","api_key":"ips-cpc-key"}}',
+            ips_timeout_seconds=10,
+        ),
+        institucion_service=FakeInstitucionService(),
+        especialidad_service=FakeEspecialidadService(),
+        paciente_service=FakePacienteService(),
+    )
+
+    rows = service.list_citas_app_by_paciente_doc(
+        supabase=object(),
+        id_paciente=5,
+        access_token="ok-token",
+    )
+
+    assert len(rows) == 1
+    assert rows[0].id == 10
+    assert rows[0].nombre_institucion == "IPS Demo"
+    assert rows[0].especialidad == "Cardiologia"
+    assert client.calls[0]["path"] == "/fhir/Patient"
+    assert client.calls[0]["params"] == {"identifier": "urn:medix:document:cc|123"}
+    assert client.calls[1]["path"] == "/fhir/Appointment"
+    assert client.calls[1]["params"] == {"patient": "Patient/5"}
+    assert client.calls[1]["extra_headers"]["Authorization"] == "Bearer ok-token"

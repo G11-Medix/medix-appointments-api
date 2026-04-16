@@ -2,6 +2,7 @@ import logging
 from datetime import datetime
 from typing import Any
 
+from fastapi import HTTPException, status
 from supabase import Client
 
 from app.clients.ips_client import IpsClient
@@ -12,7 +13,6 @@ from app.services.ips_mock_gateway import IpsMockGateway
 from app.services.ips_route_resolver import IpsRoute, IpsRouteResolver
 from app.services.especialidad_service import EspecialidadService
 from app.services.paciente_service import PacienteService
-from app.services.fhir_interop import fhir_headers
 
 LOGGER = logging.getLogger(__name__)
 
@@ -204,7 +204,8 @@ class CitaService:
     def list_all_citas_by_paciente_doc(
         self,
         supabase: Client,
-        numero_documento: int,
+        tipo_documento: str,
+        numero_documento: str,
         access_token: str | None = None,
     ) -> list[dict[str, Any]]:
         instituciones = self.institucion_service.list_instituciones(supabase)
@@ -217,12 +218,16 @@ class CitaService:
                     self.logger.warning("Institucion sin id valido en listado de citas: %s", inst)
                     continue
                 route = self._resolve_route(id_institucion)
-                response = self._client().request(
-                    method="GET",
-                    base_url=route.base_url,
-                    path="/api/v1/citas",
-                    params={"numero_documento": numero_documento},
-                    extra_headers=fhir_headers(access_token),
+                patient = self._gateway().find_patient_by_document(
+                    route=route,
+                    tipo_documento=tipo_documento,
+                    numero_documento=numero_documento,
+                    access_token=access_token,
+                )
+                response = self._gateway().list_appointments(
+                    route=route,
+                    id_paciente=int(patient["id_paciente"]),
+                    access_token=access_token,
                 )
 
                 if isinstance(response, list):
@@ -230,9 +235,26 @@ class CitaService:
                         cita["id_institucion"] = id_institucion
 
                     all_citas.extend(response)
+            except HTTPException as exc:
+                if exc.status_code == status.HTTP_404_NOT_FOUND:
+                    self.logger.info(
+                        "Paciente %s %s no encontrado en IPS %s",
+                        tipo_documento,
+                        numero_documento,
+                        id_institucion,
+                    )
+                    continue
+                self.logger.exception(
+                    "Error obteniendo citas del paciente %s %s para la IPS %s",
+                    tipo_documento,
+                    numero_documento,
+                    inst.get("id_institucion", "SIN_ID"),
+                )
+                continue
             except Exception:
                 self.logger.exception(
-                    "Error obteniendo citas del paciente %s para la IPS %s",
+                    "Error obteniendo citas del paciente %s %s para la IPS %s",
+                    tipo_documento,
                     numero_documento,
                     inst.get("id_institucion", "SIN_ID"),
                 )
@@ -258,10 +280,11 @@ class CitaService:
         }
 
         paciente = self.paciente_service.get_paciente(supabase=supabase, id_paciente=id_paciente)
-        if not paciente or not paciente.get("numero_documento"):
+        if not paciente or not paciente.get("numero_documento") or not paciente.get("tipo_documento"):
             return []
         rows = self.list_all_citas_by_paciente_doc(
             supabase=supabase,
+            tipo_documento=str(paciente["tipo_documento"]),
             numero_documento=paciente["numero_documento"],
             access_token=access_token,
         )
