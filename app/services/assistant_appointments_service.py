@@ -22,10 +22,10 @@ class AssistantAppointmentsService:
     def __init__(self, gateway: IpsMockGateway | None = None) -> None:
         self.gateway = gateway or IpsMockGateway()
 
-    def list_specialties(self) -> list[AssistantSpecialtyResponse]:
+    def list_specialties(self, access_token: str | None = None) -> list[AssistantSpecialtyResponse]:
         by_id: dict[int, AssistantSpecialtyResponse] = {}
         for route in self.gateway.list_routes():
-            for row in self.gateway.list_specialties(route):
+            for row in self.gateway.list_specialties(route, access_token=access_token):
                 specialty_id = int(row["id"])
                 if specialty_id not in by_id:
                     by_id[specialty_id] = AssistantSpecialtyResponse(
@@ -34,14 +34,18 @@ class AssistantAppointmentsService:
                     )
         return list(by_id.values())
 
-    def list_instituciones_by_especialidad(self, id_especialidad: int) -> list[AssistantInstitutionResponse]:
+    def list_instituciones_by_especialidad(
+        self,
+        id_especialidad: int,
+        access_token: str | None = None,
+    ) -> list[AssistantInstitutionResponse]:
         instituciones: list[AssistantInstitutionResponse] = []
         for route in self.gateway.list_routes():
-            providers = self.gateway.list_providers(route, id_especialidad=id_especialidad)
+            providers = self.gateway.list_providers(route, id_especialidad=id_especialidad, access_token=access_token)
             if not providers:
                 continue
 
-            current_ips = self.gateway.get_current_ips(route)
+            current_ips = self.gateway.get_current_ips(route, access_token=access_token)
             instituciones.append(
                 AssistantInstitutionResponse(
                     id_institucion=route.id_institucion,
@@ -58,20 +62,21 @@ class AssistantAppointmentsService:
         id_especialidad: int,
         fecha_desde: date,
         dias: int,
+        access_token: str | None = None,
     ) -> AssistantAvailabilityResponse:
         if dias < 1:
             raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="dias debe ser mayor a 0")
 
         route = self.gateway.get_route(id_institucion)
-        current_ips = self.gateway.get_current_ips(route)
-        provider_rows = self.gateway.list_providers(route, id_especialidad=id_especialidad)
+        current_ips = self.gateway.get_current_ips(route, access_token=access_token)
+        provider_rows = self.gateway.list_providers(route, id_especialidad=id_especialidad, access_token=access_token)
         provider_names = {int(row["id"]): str(row["nombre_completo"]) for row in provider_rows}
 
         slots_by_date: dict[date, list[AssistantAvailabilitySlot]] = defaultdict(list)
         for offset in range(dias):
             target_date = fecha_desde + timedelta(days=offset)
             for provider_id, provider_name in provider_names.items():
-                for row in self.gateway.get_provider_slots(route, provider_id, target_date):
+                for row in self.gateway.get_provider_slots(route, provider_id, target_date, access_token=access_token):
                     if not bool(row.get("disponible")) or bool(row.get("bloqueado")):
                         continue
                     fecha_hora = _parse_datetime(row["fecha_hora"])
@@ -108,14 +113,16 @@ class AssistantAppointmentsService:
         id_especialidad: int,
         fecha: date,
         hora: time,
+        access_token: str | None = None,
     ) -> AssistantAppointmentActionResponse:
         route = self.gateway.get_route(id_institucion)
-        slot = self._find_exact_slot(route, id_especialidad, fecha, hora)
+        slot = self._find_exact_slot(route, id_especialidad, fecha, hora, access_token=access_token)
         cita = self.gateway.create_appointment(
             route=route,
             id_paciente=id_paciente,
             id_prestador=slot.id_prestador,
             fecha_hora_cupo=slot.fecha_hora,
+            access_token=access_token,
         )
         return AssistantAppointmentActionResponse(
             mensaje="Cita agendada correctamente",
@@ -127,9 +134,10 @@ class AssistantAppointmentsService:
         id_cita: int,
         id_institucion: int,
         motivo: str | None,
+        access_token: str | None = None,
     ) -> AssistantAppointmentActionResponse:
         route = self.gateway.get_route(id_institucion)
-        cita = self.gateway.cancel_appointment(route=route, id_cita=id_cita, motivo=motivo)
+        cita = self.gateway.cancel_appointment(route=route, id_cita=id_cita, motivo=motivo, access_token=access_token)
         return AssistantAppointmentActionResponse(
             mensaje="Cita cancelada correctamente",
             cita=_to_assistant_appointment(cita, map_status=True),
@@ -142,23 +150,35 @@ class AssistantAppointmentsService:
         id_especialidad: int,
         nueva_fecha: date,
         nueva_hora: time,
+        access_token: str | None = None,
     ) -> AssistantAppointmentActionResponse:
         route = self.gateway.get_route(id_institucion)
-        slot = self._find_exact_slot(route, id_especialidad, nueva_fecha, nueva_hora)
+        slot = self._find_exact_slot(route, id_especialidad, nueva_fecha, nueva_hora, access_token=access_token)
         cita = self.gateway.reschedule_appointment(
             route=route,
             id_cita=id_cita,
             nueva_fecha_hora_cupo=slot.fecha_hora,
+            access_token=access_token,
         )
         return AssistantAppointmentActionResponse(
             mensaje="Cita reprogramada correctamente",
             cita=_to_assistant_appointment(cita, map_status=True),
         )
 
-    def find_patient_by_document(self, tipo_documento: str, numero_documento: str) -> AssistantPatientResponse:
+    def find_patient_by_document(
+        self,
+        tipo_documento: str,
+        numero_documento: str,
+        access_token: str | None = None,
+    ) -> AssistantPatientResponse:
         for route in self.gateway.list_routes():
             try:
-                row = self.gateway.find_patient_by_document(route, tipo_documento, numero_documento)
+                row = self.gateway.find_patient_by_document(
+                    route,
+                    tipo_documento,
+                    numero_documento,
+                    access_token=access_token,
+                )
                 return AssistantPatientResponse.model_validate(row)
             except HTTPException as exc:
                 if exc.status_code == status.HTTP_404_NOT_FOUND:
@@ -172,12 +192,14 @@ class AssistantAppointmentsService:
         id_especialidad: int,
         fecha: date,
         hora: time,
+        access_token: str | None = None,
     ) -> AssistantAvailabilitySlot:
         disponibilidad = self.get_disponibilidad(
             id_institucion=route.id_institucion,
             id_especialidad=id_especialidad,
             fecha_desde=fecha,
             dias=1,
+            access_token=access_token,
         )
         target_hour = hora.strftime("%H:%M")
         candidates = [

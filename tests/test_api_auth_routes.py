@@ -155,30 +155,35 @@ def auth_client(monkeypatch: pytest.MonkeyPatch) -> tuple[TestClient, str, objec
             return None
 
     class FakeCitaService:
-        def create_cita(self, id_institucion: int, payload):  # noqa: ANN001
+        def create_cita(self, id_institucion: int, payload, access_token=None):  # noqa: ANN001
             assert id_institucion == 1
             assert payload.id_paciente == 1
+            assert access_token == "ok-token"
             return _build_cita_response()
 
-        def get_cita(self, id_institucion: int, id_cita: int):  # noqa: ANN001
+        def get_cita(self, id_institucion: int, id_cita: int, access_token=None):  # noqa: ANN001
             assert id_institucion == 1
             assert id_cita == 10
+            assert access_token == "ok-token"
             return _build_cita_response()
 
-        def list_citas(self, id_institucion: int, *, id_paciente=None, desde=None, hasta=None):  # noqa: ANN001
+        def list_citas(self, id_institucion: int, *, id_paciente=None, desde=None, hasta=None, access_token=None):  # noqa: ANN001
             assert id_institucion == 1
+            assert access_token == "ok-token"
             return [_build_cita_response()]
 
-        def update_cita(self, id_institucion: int, id_cita: int, payload):  # noqa: ANN001
+        def update_cita(self, id_institucion: int, id_cita: int, payload, access_token=None):  # noqa: ANN001
             assert id_institucion == 1
             assert id_cita == 10
             assert isinstance(payload.nueva_fecha_hora_cupo, datetime)
+            assert access_token == "ok-token"
             return _build_cita_response()
 
-        def delete_cita(self, id_institucion: int, id_cita: int, payload):  # noqa: ANN001
+        def delete_cita(self, id_institucion: int, id_cita: int, payload, access_token=None):  # noqa: ANN001
             assert id_institucion == 1
             assert id_cita == 10
             assert payload.motivo is not None
+            assert access_token == "ok-token"
             return _build_cita_response(estado="cancelled")
 
     fake_paciente_service = FakePacienteService()

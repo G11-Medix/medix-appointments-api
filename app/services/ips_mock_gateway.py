@@ -1,8 +1,25 @@
 from datetime import date, datetime
 from typing import Any
 
+from fastapi import HTTPException, status
+
 from app.clients.ips_client import IpsClient
 from app.core.config import Settings, get_settings
+from app.services.fhir_interop import (
+    appointment_to_legacy,
+    build_appointment_resource,
+    build_cancel_patch,
+    build_reschedule_patch,
+    bundle_entries,
+    document_identifier_system,
+    fhir_headers,
+    first_bundle_resource,
+    organization_to_legacy,
+    patient_to_legacy,
+    practitioner_role_to_legacy,
+    slot_to_legacy,
+    specialty_from_codeable_concepts,
+)
 from app.services.ips_route_resolver import IpsRoute, IpsRouteResolver
 
 
@@ -23,49 +40,64 @@ class IpsMockGateway:
     def get_route(self, id_institucion: int) -> IpsRoute:
         return self.route_resolver.get_route(id_institucion)
 
-    def list_specialties(self, route: IpsRoute) -> list[dict[str, Any]]:
+    def list_specialties(self, route: IpsRoute, access_token: str | None = None) -> list[dict[str, Any]]:
         response = self._client().request(
             method="GET",
             base_url=route.base_url,
-            api_key=route.api_key,
-            path="/api/v1/especialidades",
+            path="/fhir/PractitionerRole",
+            params={"organization": f"Organization/{route.id_institucion}"},
+            extra_headers=fhir_headers(),
         )
-        return response if isinstance(response, list) else []
+        specialties: dict[int, str] = {}
+        for resource in bundle_entries(response):
+            specialty_id, specialty_name = specialty_from_codeable_concepts(resource.get("specialty") or [])
+            if specialty_id is not None and specialty_name:
+                specialties[specialty_id] = specialty_name
+        return [{"id": specialty_id, "nombre": name} for specialty_id, name in specialties.items()]
 
-    def get_current_ips(self, route: IpsRoute) -> dict[str, Any]:
+    def get_current_ips(self, route: IpsRoute, access_token: str | None = None) -> dict[str, Any]:
         response = self._client().request(
             method="GET",
             base_url=route.base_url,
-            api_key=route.api_key,
-            path="/api/v1/ips/actual",
+            path="/fhir/Organization",
+            extra_headers=fhir_headers(),
         )
-        return response if isinstance(response, dict) else {}
+        resource = first_bundle_resource(response)
+        return organization_to_legacy(resource) if resource else {}
 
-    def list_providers(self, route: IpsRoute, id_especialidad: int | None = None) -> list[dict[str, Any]]:
-        params = {"id_especialidad": id_especialidad} if id_especialidad is not None else None
+    def list_providers(
+        self,
+        route: IpsRoute,
+        id_especialidad: int | None = None,
+        access_token: str | None = None,
+    ) -> list[dict[str, Any]]:
+        params: dict[str, Any] = {"organization": f"Organization/{route.id_institucion}"}
+        if id_especialidad is not None:
+            params["specialty"] = id_especialidad
         response = self._client().request(
             method="GET",
             base_url=route.base_url,
-            api_key=route.api_key,
-            path="/api/v1/prestadores",
+            path="/fhir/PractitionerRole",
             params=params,
+            extra_headers=fhir_headers(),
         )
-        return response if isinstance(response, list) else []
+        return [practitioner_role_to_legacy(resource) for resource in bundle_entries(response)]
 
     def get_provider_slots(
         self,
         route: IpsRoute,
         id_prestador: int,
         fecha: date,
+        access_token: str | None = None,
     ) -> list[dict[str, Any]]:
         response = self._client().request(
             method="GET",
             base_url=route.base_url,
-            api_key=route.api_key,
-            path=f"/api/v1/prestadores/{id_prestador}/cupos",
-            params={"fecha": fecha.isoformat()},
+            path="/fhir/Slot",
+            params={"schedule": f"Schedule/{id_prestador}", "start": fecha.isoformat()},
+            extra_headers=fhir_headers(access_token),
         )
-        return response if isinstance(response, list) else []
+        return [slot_to_legacy(resource) for resource in bundle_entries(response)]
 
     def create_appointment(
         self,
@@ -73,58 +105,116 @@ class IpsMockGateway:
         id_paciente: int,
         id_prestador: int,
         fecha_hora_cupo: datetime,
+        id_especialidad: int | None = None,
+        access_token: str | None = None,
     ) -> dict[str, Any]:
+        provider_rows = self.list_providers(route, id_especialidad=id_especialidad, access_token=access_token)
+        provider_row = next((row for row in provider_rows if int(row["id"]) == id_prestador), None)
         response = self._client().request(
             method="POST",
             base_url=route.base_url,
-            api_key=route.api_key,
-            path="/api/v1/citas",
-            payload={
-                "id_paciente": id_paciente,
-                "id_prestador": id_prestador,
-                "fecha_hora_cupo": fecha_hora_cupo.isoformat(),
-            },
+            path="/fhir/Appointment",
+            payload=build_appointment_resource(
+                patient_id=id_paciente,
+                provider_id=id_prestador,
+                specialty_id=int(provider_row["id_especialidad"]) if provider_row else 0,
+                specialty_name=str(provider_row.get("nombre_especialidad") or "") if provider_row else None,
+                slot_start=fecha_hora_cupo,
+            ),
+            extra_headers=fhir_headers(access_token),
         )
-        return response if isinstance(response, dict) else {}
+        return appointment_to_legacy(response) if isinstance(response, dict) else {}
 
-    def cancel_appointment(self, route: IpsRoute, id_cita: int, motivo: str | None) -> dict[str, Any]:
+    def cancel_appointment(
+        self,
+        route: IpsRoute,
+        id_cita: int,
+        motivo: str | None,
+        access_token: str | None = None,
+    ) -> dict[str, Any]:
         response = self._client().request(
             method="PATCH",
             base_url=route.base_url,
-            api_key=route.api_key,
-            path=f"/api/v1/citas/{id_cita}/cancelar",
-            payload={"motivo": motivo},
+            path=f"/fhir/Appointment/{id_cita}",
+            payload=build_cancel_patch(motivo),
+            extra_headers=fhir_headers(access_token),
         )
-        return response if isinstance(response, dict) else {}
+        return appointment_to_legacy(response) if isinstance(response, dict) else {}
 
     def reschedule_appointment(
         self,
         route: IpsRoute,
         id_cita: int,
         nueva_fecha_hora_cupo: datetime,
+        access_token: str | None = None,
     ) -> dict[str, Any]:
+        existing = self.get_appointment(route, id_cita, access_token=access_token)
         response = self._client().request(
             method="PATCH",
             base_url=route.base_url,
-            api_key=route.api_key,
-            path=f"/api/v1/citas/{id_cita}/reprogramar",
-            payload={"nueva_fecha_hora_cupo": nueva_fecha_hora_cupo.isoformat()},
+            path=f"/fhir/Appointment/{id_cita}",
+            payload=build_reschedule_patch(
+                provider_id=int(existing["id_prestador"]),
+                specialty_id=int(existing["id_especialidad"]),
+                specialty_name=None,
+                slot_start=nueva_fecha_hora_cupo,
+            ),
+            extra_headers=fhir_headers(access_token),
         )
-        return response if isinstance(response, dict) else {}
+        return appointment_to_legacy(response) if isinstance(response, dict) else {}
 
     def find_patient_by_document(
         self,
         route: IpsRoute,
         tipo_documento: str,
         numero_documento: str,
+        access_token: str | None = None,
     ) -> dict[str, Any]:
         response = self._client().request(
             method="GET",
             base_url=route.base_url,
-            api_key=route.api_key,
-            path=f"/api/v1/pacientes/{tipo_documento}/{numero_documento}",
+            path="/fhir/Patient",
+            params={"identifier": f"{document_identifier_system(tipo_documento)}|{numero_documento}"},
+            extra_headers=fhir_headers(),
         )
-        return response if isinstance(response, dict) else {}
+        patient_resources = bundle_entries(response)
+        if not patient_resources:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Paciente no encontrado")
+        return patient_to_legacy(patient_resources[0])
+
+    def get_appointment(self, route: IpsRoute, id_cita: int, access_token: str | None = None) -> dict[str, Any]:
+        response = self._client().request(
+            method="GET",
+            base_url=route.base_url,
+            path=f"/fhir/Appointment/{id_cita}",
+            extra_headers=fhir_headers(access_token),
+        )
+        return appointment_to_legacy(response) if isinstance(response, dict) else {}
+
+    def list_appointments(
+        self,
+        route: IpsRoute,
+        *,
+        id_paciente: int | None = None,
+        desde: datetime | None = None,
+        estado: str | None = None,
+        access_token: str | None = None,
+    ) -> list[dict[str, Any]]:
+        params: dict[str, Any] = {}
+        if id_paciente is not None:
+            params["patient"] = f"Patient/{id_paciente}"
+        if desde is not None:
+            params["date"] = desde.date().isoformat()
+        if estado is not None:
+            params["status"] = "booked" if estado == "scheduled" else estado
+        response = self._client().request(
+            method="GET",
+            base_url=route.base_url,
+            path="/fhir/Appointment",
+            params=params or None,
+            extra_headers=fhir_headers(access_token),
+        )
+        return [appointment_to_legacy(resource) for resource in bundle_entries(response)]
 
     def _settings(self) -> Settings:
         if self.settings is None:

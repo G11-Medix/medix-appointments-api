@@ -11,7 +11,7 @@ from app.core.config import Settings, get_settings
 class IpsRoute:
     id_institucion: int
     base_url: str
-    api_key: str
+    api_key: str | None = None
 
 
 class IpsRouteResolver:
@@ -65,23 +65,17 @@ def _parse_routes(raw_json: str) -> dict[int, IpsRoute]:
             )
 
         base_url = value.get("base_url")
-        api_key = value.get("api_key")
         if not isinstance(base_url, str) or not base_url.strip():
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="IPS_ROUTES_JSON requiere base_url por institución",
-            )
-        if not isinstance(api_key, str) or not api_key.strip():
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="IPS_ROUTES_JSON requiere api_key por institución",
             )
 
         route_id = int(key)
         routes[route_id] = IpsRoute(
             id_institucion=route_id,
             base_url=base_url,
-            api_key=api_key,
+            api_key=value.get("api_key") if isinstance(value.get("api_key"), str) and value.get("api_key") else None,
         )
 
     return routes

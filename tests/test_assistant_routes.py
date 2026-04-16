@@ -51,15 +51,25 @@ class FakeSupabase:
 
 
 class FakeAssistantService:
-    def list_specialties(self):
+    def list_specialties(self, access_token: str | None = None):
+        assert access_token == "ok-token"
         return [{"id": 1, "nombre": "Cardiologia"}]
 
-    def list_instituciones_by_especialidad(self, id_especialidad: int):
+    def list_instituciones_by_especialidad(self, id_especialidad: int, access_token: str | None = None):
         assert id_especialidad == 1
+        assert access_token == "ok-token"
         return [{"id_institucion": 1, "nombre": "IPS Demo", "estado": "ACTIVA", "especialidades": [1]}]
 
-    def get_disponibilidad(self, id_institucion: int, id_especialidad: int, fecha_desde: date, dias: int):
+    def get_disponibilidad(
+        self,
+        id_institucion: int,
+        id_especialidad: int,
+        fecha_desde: date,
+        dias: int,
+        access_token: str | None = None,
+    ):
         assert (id_institucion, id_especialidad, fecha_desde, dias) == (1, 1, date(2026, 4, 10), 7)
+        assert access_token == "ok-token"
         return {
             "id_institucion": 1,
             "nombre_institucion": "IPS Demo",
@@ -79,7 +89,15 @@ class FakeAssistantService:
             ],
         }
 
-    def schedule_appointment(self, id_paciente: int, id_institucion: int, id_especialidad: int, fecha: date, hora: time):
+    def schedule_appointment(
+        self,
+        id_paciente: int,
+        id_institucion: int,
+        id_especialidad: int,
+        fecha: date,
+        hora: time,
+        access_token: str | None = None,
+    ):
         assert (id_paciente, id_institucion, id_especialidad, fecha, hora) == (
             12,
             1,
@@ -87,6 +105,7 @@ class FakeAssistantService:
             date(2026, 4, 10),
             time(10, 0, 0),
         )
+        assert access_token == "ok-token"
         return {
             "mensaje": "Cita agendada correctamente",
             "cita": {
@@ -102,8 +121,9 @@ class FakeAssistantService:
             },
         }
 
-    def cancel_appointment(self, id_cita: int, id_institucion: int, motivo: str | None):
+    def cancel_appointment(self, id_cita: int, id_institucion: int, motivo: str | None, access_token: str | None = None):
         assert (id_cita, id_institucion, motivo) == (100, 1, "No puedo asistir")
+        assert access_token == "ok-token"
         return {
             "mensaje": "Cita cancelada correctamente",
             "cita": {
@@ -119,7 +139,15 @@ class FakeAssistantService:
             },
         }
 
-    def reschedule_appointment(self, id_cita: int, id_institucion: int, id_especialidad: int, nueva_fecha: date, nueva_hora: time):
+    def reschedule_appointment(
+        self,
+        id_cita: int,
+        id_institucion: int,
+        id_especialidad: int,
+        nueva_fecha: date,
+        nueva_hora: time,
+        access_token: str | None = None,
+    ):
         assert (id_cita, id_institucion, id_especialidad, nueva_fecha, nueva_hora) == (
             100,
             1,
@@ -127,6 +155,7 @@ class FakeAssistantService:
             date(2026, 4, 11),
             time(14, 0, 0),
         )
+        assert access_token == "ok-token"
         return {
             "mensaje": "Cita reprogramada correctamente",
             "cita": {
@@ -142,8 +171,9 @@ class FakeAssistantService:
             },
         }
 
-    def find_patient_by_document(self, tipo_documento: str, numero_documento: str):
+    def find_patient_by_document(self, tipo_documento: str, numero_documento: str, access_token: str | None = None):
         assert (tipo_documento, numero_documento) == ("CC", "123")
+        assert access_token == "ok-token"
         return {
             "id_paciente": 12,
             "tipo_documento": "CC",

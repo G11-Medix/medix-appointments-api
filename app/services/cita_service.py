@@ -8,6 +8,7 @@ from app.clients.ips_client import IpsClient
 from app.core.config import Settings, get_settings
 from app.schemas.cita import CitaCreate, CitaDelete, CitaUpdate, CitaAppResponse
 from app.services.institucion_service import InstitucionService
+from app.services.ips_mock_gateway import IpsMockGateway
 from app.services.ips_route_resolver import IpsRoute, IpsRouteResolver
 from app.services.especialidad_service import EspecialidadService
 
@@ -31,24 +32,20 @@ class CitaService:
         self.route_resolver = route_resolver or IpsRouteResolver(settings=settings)
         self.logger = logger or LOGGER
 
-    def create_cita(self, id_institucion: int, payload: CitaCreate) -> dict[str, Any]:
+    def create_cita(self, id_institucion: int, payload: CitaCreate, access_token: str | None = None) -> dict[str, Any]:
         route = self._resolve_route(id_institucion)
-        return self._client().request(
-            method="POST",
-            base_url=route.base_url,
-            api_key=route.api_key,
-            path="/api/v1/citas",
-            payload=payload.model_dump(mode="json"),
+        return self._gateway().create_appointment(
+            route=route,
+            id_paciente=payload.id_paciente,
+            id_prestador=payload.id_prestador,
+            fecha_hora_cupo=payload.fecha_hora_cupo,
+            id_especialidad=getattr(payload, "id_especialidad", None),
+            access_token=access_token,
         )
 
-    def get_cita(self, id_institucion: int, id_cita: int) -> dict[str, Any]:
+    def get_cita(self, id_institucion: int, id_cita: int, access_token: str | None = None) -> dict[str, Any]:
         route = self._resolve_route(id_institucion)
-        return self._client().request(
-            method="GET",
-            base_url=route.base_url,
-            api_key=route.api_key,
-            path=f"/api/v1/citas/{id_cita}",
-        )
+        return self._gateway().get_appointment(route=route, id_cita=id_cita, access_token=access_token)
 
     def list_citas(
         self,
@@ -57,29 +54,24 @@ class CitaService:
         id_paciente: int | None = None,
         desde: datetime | None = None,
         hasta: datetime | None = None,
+        access_token: str | None = None,
     ) -> list[dict[str, Any]]:
         route = self._resolve_route(id_institucion)
-        params: dict[str, str | int] = {}
-        if id_paciente is not None:
-            params["id_paciente"] = id_paciente
-        if desde is not None:
-            params["desde"] = desde.isoformat()
-        if hasta is not None:
-            params["hasta"] = hasta.isoformat()
-
-        response = self._client().request(
-            method="GET",
-            base_url=route.base_url,
-            api_key=route.api_key,
-            path="/api/v1/citas",
-            params=params,
+        response = self._gateway().list_appointments(
+            route=route,
+            id_paciente=id_paciente,
+            desde=desde,
+            access_token=access_token,
         )
+        if hasta is not None:
+            return [row for row in response if datetime.fromisoformat(str(row["fecha_hora_cupo"])) <= hasta]
         return response if isinstance(response, list) else []
 
     def list_all_citas_by_paciente(
         self,
         supabase: Client,
         id_paciente: int,
+        access_token: str | None = None,
     ) -> list[dict[str, Any]]:
         instituciones = self.institucion_service.list_instituciones(supabase)
         all_citas: list[dict[str, Any]] = []
@@ -91,12 +83,10 @@ class CitaService:
                     self.logger.warning("Institucion sin id valido en listado de citas: %s", inst)
                     continue
                 route = self._resolve_route(id_institucion)
-                response = self._client().request(
-                    method="GET",
-                    base_url=route.base_url,
-                    api_key=route.api_key,
-                    path="/api/v1/citas",
-                    params={"id_paciente": id_paciente},
+                response = self._gateway().list_appointments(
+                    route=route,
+                    id_paciente=id_paciente,
+                    access_token=access_token,
                 )
 
                 if isinstance(response, list):
@@ -118,6 +108,7 @@ class CitaService:
         self,
         supabase: Client,
         id_paciente: int,
+        access_token: str | None = None,
     ) -> list[CitaAppResponse]:
         instituciones = self.institucion_service.list_instituciones(supabase)
         inst_map = {
@@ -126,12 +117,19 @@ class CitaService:
         }
         especialidades = self.especialidad_service.list_especialidades(supabase)
         esp_map = {
-            esp["id_especialidad"]: esp["nombre"]
+            int(esp["codigo_reps"]): esp["nombre"]
             for esp in especialidades
+            if esp.get("codigo_reps") is not None
         }
+        esp_map.update({
+            int(esp["id_especialidad"]): esp["nombre"]
+            for esp in especialidades
+            if esp.get("id_especialidad") is not None
+        })
         rows = self.list_all_citas_by_paciente(
             supabase=supabase,
             id_paciente=id_paciente,
+            access_token=access_token,
         )
         return [
             CitaAppResponse(
@@ -149,24 +147,34 @@ class CitaService:
             for row in rows
         ]
 
-    def update_cita(self, id_institucion: int, id_cita: int, payload: CitaUpdate) -> dict[str, Any]:
+    def update_cita(
+        self,
+        id_institucion: int,
+        id_cita: int,
+        payload: CitaUpdate,
+        access_token: str | None = None,
+    ) -> dict[str, Any]:
         route = self._resolve_route(id_institucion)
-        return self._client().request(
-            method="PATCH",
-            base_url=route.base_url,
-            api_key=route.api_key,
-            path=f"/api/v1/citas/{id_cita}/reprogramar",
-            payload=payload.model_dump(mode="json"),
+        return self._gateway().reschedule_appointment(
+            route=route,
+            id_cita=id_cita,
+            nueva_fecha_hora_cupo=payload.nueva_fecha_hora_cupo,
+            access_token=access_token,
         )
 
-    def delete_cita(self, id_institucion: int, id_cita: int, payload: CitaDelete) -> dict[str, Any]:
+    def delete_cita(
+        self,
+        id_institucion: int,
+        id_cita: int,
+        payload: CitaDelete,
+        access_token: str | None = None,
+    ) -> dict[str, Any]:
         route = self._resolve_route(id_institucion)
-        return self._client().request(
-            method="PATCH",
-            base_url=route.base_url,
-            api_key=route.api_key,
-            path=f"/api/v1/citas/{id_cita}/cancelar",
-            payload=payload.model_dump(mode="json"),
+        return self._gateway().cancel_appointment(
+            route=route,
+            id_cita=id_cita,
+            motivo=payload.motivo,
+            access_token=access_token,
         )
 
     def _resolve_route(self, id_institucion: int) -> IpsRoute:
@@ -181,3 +189,10 @@ class CitaService:
         if self.client is None:
             self.client = IpsClient(timeout_seconds=self._settings().ips_timeout_seconds)
         return self.client
+
+    def _gateway(self) -> IpsMockGateway:
+        return IpsMockGateway(
+            client=self._client(),
+            settings=self._settings(),
+            route_resolver=self.route_resolver,
+        )

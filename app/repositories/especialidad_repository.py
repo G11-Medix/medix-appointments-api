@@ -5,7 +5,7 @@ class EspecialidadRepository:
     def list(self, supabase: Client, limit: int = 50) -> list[dict]:
         response = (
             supabase.table("Especialidad")
-            .select("id_especialidad,nombre")
+            .select("id_especialidad,nombre,codigo_reps")
             .order("id_especialidad")
             .limit(limit)
             .execute()

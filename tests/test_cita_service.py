@@ -14,16 +14,117 @@ class DummyIpsClient:
 
     def request(self, **kwargs):  # noqa: ANN003
         self.calls.append(kwargs)
+        path = kwargs["path"]
+        if path == "/fhir/PractitionerRole":
+            return {
+                "resourceType": "Bundle",
+                "type": "searchset",
+                "entry": [
+                    {
+                        "resource": {
+                            "resourceType": "PractitionerRole",
+                            "id": "2",
+                            "practitioner": {"reference": "Practitioner/2", "display": "Dr. Demo"},
+                            "specialty": [
+                                {
+                                    "coding": [
+                                        {
+                                            "system": "urn:medix:specialty",
+                                            "code": "302",
+                                            "display": "Cardiologia",
+                                        }
+                                    ],
+                                    "text": "Cardiologia",
+                                }
+                            ],
+                        }
+                    }
+                ],
+            }
+        if path == "/fhir/Appointment" and kwargs["method"] == "GET":
+            return {
+                "resourceType": "Bundle",
+                "type": "searchset",
+                "entry": [
+                    {
+                        "resource": {
+                            "resourceType": "Appointment",
+                            "id": "10",
+                            "status": "booked",
+                            "specialty": [
+                                {
+                                    "coding": [
+                                        {
+                                            "system": "urn:medix:specialty",
+                                            "code": "302",
+                                            "display": "Cardiologia",
+                                        }
+                                    ],
+                                    "text": "Cardiologia",
+                                }
+                            ],
+                            "participant": [
+                                {"actor": {"reference": "Patient/5"}, "status": "accepted"},
+                                {"actor": {"reference": "Practitioner/2"}, "status": "accepted"},
+                            ],
+                            "created": "2026-03-31T10:00:00",
+                            "meta": {"lastUpdated": "2026-03-31T10:00:00"},
+                            "start": "2026-04-01T08:00:00",
+                            "end": "2026-04-01T08:30:00",
+                        }
+                    }
+                ],
+            }
+        if path == "/fhir/Appointment" and kwargs["method"] == "POST":
+            return {
+                "resourceType": "Appointment",
+                "id": "10",
+                "status": "booked",
+                "specialty": [
+                    {
+                        "coding": [
+                            {
+                                "system": "urn:medix:specialty",
+                                "code": "302",
+                                "display": "Cardiologia",
+                            }
+                        ],
+                        "text": "Cardiologia",
+                    }
+                ],
+                "participant": [
+                    {"actor": {"reference": "Patient/1"}, "status": "accepted"},
+                    {"actor": {"reference": "Practitioner/2"}, "status": "accepted"},
+                ],
+                "created": "2026-03-31T10:00:00",
+                "meta": {"lastUpdated": "2026-03-31T10:00:00"},
+                "start": "2026-04-01T08:00:00",
+                "end": "2026-04-01T08:30:00",
+            }
         return {
-            "id": 10,
-            "id_paciente": 1,
-            "id_prestador": 1,
-            "id_especialidad": 1,
-            "fecha_hora_cupo": "2026-04-01T08:00:00",
-            "estado": "scheduled",
-            "motivo_cancelacion": None,
-            "fecha_creacion": "2026-03-31T10:00:00",
-            "fecha_actualizacion": "2026-03-31T10:00:00",
+            "resourceType": "Appointment",
+            "id": "10",
+            "status": "booked",
+            "specialty": [
+                {
+                    "coding": [
+                        {
+                            "system": "urn:medix:specialty",
+                            "code": "302",
+                            "display": "Cardiologia",
+                        }
+                    ],
+                    "text": "Cardiologia",
+                }
+            ],
+            "participant": [
+                {"actor": {"reference": "Patient/1"}, "status": "accepted"},
+                {"actor": {"reference": "Practitioner/2"}, "status": "accepted"},
+            ],
+            "created": "2026-03-31T10:00:00",
+            "meta": {"lastUpdated": "2026-03-31T10:00:00"},
+            "start": "2026-04-01T08:00:00",
+            "end": "2026-04-01T08:30:00",
         }
 
 
@@ -44,10 +145,11 @@ def test_create_cita_uses_institucion_route() -> None:
         payload=CitaCreate(id_paciente=1, id_prestador=2, fecha_hora_cupo=datetime(2026, 4, 1, 8, 0, 0)),
     )
 
-    assert client.calls[0]["method"] == "POST"
-    assert client.calls[0]["base_url"] == "http://localhost:4011"
-    assert client.calls[0]["api_key"] == "ips-csh-key"
-    assert client.calls[0]["path"] == "/api/v1/citas"
+    assert client.calls[0]["path"] == "/fhir/PractitionerRole"
+    assert client.calls[1]["method"] == "POST"
+    assert client.calls[1]["base_url"] == "http://localhost:4011"
+    assert client.calls[1]["extra_headers"]["Accept"] == "application/fhir+json"
+    assert client.calls[1]["path"] == "/fhir/Appointment"
 
 
 def test_update_delete_map_to_reprogramar_cancelar() -> None:
@@ -65,10 +167,12 @@ def test_update_delete_map_to_reprogramar_cancelar() -> None:
         payload=CitaDelete(motivo="Paciente no asiste"),
     )
 
-    assert client.calls[0]["path"] == "/api/v1/citas/25/reprogramar"
-    assert client.calls[1]["path"] == "/api/v1/citas/25/cancelar"
-    assert client.calls[0]["method"] == "PATCH"
+    assert client.calls[0]["path"] == "/fhir/Appointment/25"
+    assert client.calls[1]["path"] == "/fhir/Appointment/25"
+    assert client.calls[2]["path"] == "/fhir/Appointment/25"
+    assert client.calls[0]["method"] == "GET"
     assert client.calls[1]["method"] == "PATCH"
+    assert client.calls[2]["method"] == "PATCH"
 
 
 def test_list_citas_sends_query_params() -> None:
@@ -79,11 +183,10 @@ def test_list_citas_sends_query_params() -> None:
 
     service.list_citas(id_institucion=3, id_paciente=5, desde=desde, hasta=hasta)
 
-    assert client.calls[0]["path"] == "/api/v1/citas"
+    assert client.calls[0]["path"] == "/fhir/Appointment"
     assert client.calls[0]["params"] == {
-        "id_paciente": 5,
-        "desde": "2026-04-01T00:00:00",
-        "hasta": "2026-04-30T23:59:59",
+        "patient": "Patient/5",
+        "date": "2026-04-01",
     }
 
 

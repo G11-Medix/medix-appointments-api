@@ -55,6 +55,13 @@ pytest
 docker compose up --build
 ```
 
+El `docker-compose.yml` ya deja configurado `IPS_ROUTES_JSON` para enrutar:
+- `1` -> `ips_santa_fe:4011`
+- `2` -> `ips_country:4012`
+- `3` -> `ips_clinica_colombia:4013`
+- `4` -> `ips_san_ignacio:4014`
+- `5` -> `ips_mederi:4015`
+
 ### Build and Run (Docker)
 
 ```bash

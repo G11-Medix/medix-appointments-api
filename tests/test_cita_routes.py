@@ -24,39 +24,45 @@ def _cita_response(estado: str = "scheduled") -> dict:
 @pytest.fixture
 def client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
     class FakeCitaService:
-        def create_cita(self, id_institucion: int, payload):  # noqa: ANN001
+        def create_cita(self, id_institucion: int, payload, access_token: str | None = None):  # noqa: ANN001
             assert id_institucion == 1
             assert payload.id_paciente == 1
+            assert access_token == "ok-token"
             return _cita_response()
 
-        def get_cita(self, id_institucion: int, id_cita: int):
+        def get_cita(self, id_institucion: int, id_cita: int, access_token: str | None = None):
             if id_cita == 404:
                 raise HTTPException(status_code=404, detail="Cita no encontrada")
+            assert access_token == "ok-token"
             return _cita_response()
 
-        def list_citas(self, id_institucion: int, *, id_paciente=None, desde=None, hasta=None):  # noqa: ANN001
+        def list_citas(self, id_institucion: int, *, id_paciente=None, desde=None, hasta=None, access_token: str | None = None):  # noqa: ANN001
             assert id_institucion == 1
             assert id_paciente == 1
             assert isinstance(desde, datetime)
             assert isinstance(hasta, datetime)
+            assert access_token == "ok-token"
             return [_cita_response()]
 
-        def update_cita(self, id_institucion: int, id_cita: int, payload):  # noqa: ANN001
+        def update_cita(self, id_institucion: int, id_cita: int, payload, access_token: str | None = None):  # noqa: ANN001
             if id_cita == 409:
                 raise HTTPException(status_code=409, detail="Solo las citas programadas pueden reprogramarse")
             assert id_institucion == 1
             assert payload.nueva_fecha_hora_cupo
+            assert access_token == "ok-token"
             return _cita_response()
 
-        def delete_cita(self, id_institucion: int, id_cita: int, payload):  # noqa: ANN001
+        def delete_cita(self, id_institucion: int, id_cita: int, payload, access_token: str | None = None):  # noqa: ANN001
             if id_cita == 502:
                 raise HTTPException(status_code=502, detail="No fue posible conectar con la IPS")
             if id_cita == 504:
                 raise HTTPException(status_code=504, detail="Timeout al consultar IPS")
             assert id_institucion == 1
             assert payload.motivo is not None
+            assert access_token == "ok-token"
             return _cita_response(estado="cancelled")
 
+    monkeypatch.setattr(cita_module, "get_access_token_from_state", lambda _request: "ok-token")
     app = FastAPI()
     app.dependency_overrides[cita_module.get_cita_service] = lambda: FakeCitaService()
     app.include_router(cita_module.router, prefix="/api")

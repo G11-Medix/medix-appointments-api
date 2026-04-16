@@ -1,7 +1,9 @@
 from datetime import date
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
+
+from app.api.dependencies.auth import get_access_token_from_state
 from supabase import Client
 
 from app.api.routes.assistant import get_assistant_service
@@ -20,6 +22,7 @@ def get_institucion_service() -> InstitucionService:
 
 @router.get("/", response_model=list[InstitucionResponse] | list[AssistantInstitutionResponse])
 def list_instituciones(
+    request: Request,
     limit: int = Query(default=20, ge=1, le=100),
     id_especialidad: int | None = Query(default=None),
     service: Annotated[InstitucionService, Depends(get_institucion_service)] = None,
@@ -27,13 +30,17 @@ def list_instituciones(
     supabase: Client = Depends(get_supabase_client),
 ) -> list[InstitucionResponse] | list[AssistantInstitutionResponse]:
     if id_especialidad is not None:
-        return assistant_service.list_instituciones_by_especialidad(id_especialidad)
+        return assistant_service.list_instituciones_by_especialidad(
+            id_especialidad,
+            access_token=get_access_token_from_state(request),
+        )
     rows = service.list_instituciones(supabase=supabase, limit=limit)
     return [InstitucionResponse.model_validate(row) for row in rows]
 
 
 @router.get("/{id_institucion}/disponibilidad", response_model=AssistantAvailabilityResponse)
 def get_disponibilidad(
+    request: Request,
     id_institucion: int,
     id_especialidad: int = Query(...),
     fecha_desde: date = Query(...),
@@ -45,4 +52,5 @@ def get_disponibilidad(
         id_especialidad=id_especialidad,
         fecha_desde=fecha_desde,
         dias=dias,
+        access_token=get_access_token_from_state(request),
     )
