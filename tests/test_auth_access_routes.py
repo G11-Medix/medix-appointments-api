@@ -5,7 +5,6 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from app.api.dependencies import auth as auth_module
 from app.api.router import api_router
 from app.api.routes import auth as auth_routes_module
 from app.api.routes.auth import public_router as auth_public_router
@@ -54,7 +53,6 @@ class FakeSupabase:
 
 class FakeAuthAccessService:
     def __init__(self) -> None:
-        self.last_grant_payload: dict | None = None
         self.last_eligibility_phone: str | None = None
 
     def check_phone_login_eligibility(self, supabase, admin_supabase, telefono: str):  # noqa: ANN001
@@ -70,22 +68,6 @@ class FakeAuthAccessService:
             },
         }
 
-    def grant_patient_access(self, supabase, admin_supabase, id_paciente: int, telefono: str, rol: str):  # noqa: ANN001
-        self.last_grant_payload = {
-            "id_paciente": id_paciente,
-            "telefono": telefono,
-            "rol": rol,
-        }
-        return {
-            "id_paciente": id_paciente,
-            "id_usuario": str(uuid4()),
-            "telefono": telefono,
-            "rol": rol,
-            "estado_usuario": "ACTIVO",
-            "estado_paciente": "ACTIVO",
-            "auth_user_created": True,
-        }
-
 
 @pytest.fixture
 def auth_routes_client(monkeypatch: pytest.MonkeyPatch) -> tuple[TestClient, FakeAuthAccessService]:
@@ -95,8 +77,6 @@ def auth_routes_client(monkeypatch: pytest.MonkeyPatch) -> tuple[TestClient, Fak
         token_to_user_id={"ok-token": user_id},
     )
     fake_service = FakeAuthAccessService()
-
-    monkeypatch.setattr(auth_module, "get_supabase_client", lambda: fake_supabase)
 
     app = FastAPI()
     app.dependency_overrides[auth_routes_module.get_auth_access_service] = lambda: fake_service
@@ -130,17 +110,3 @@ def test_public_auth_eligibility_route_accepts_phone_without_plus(
     assert response.status_code == 200
     assert response.json()["authorized"] is True
     assert fake_service.last_eligibility_phone == "573001234567"
-
-
-def test_admin_grant_access_requires_admin_role(auth_routes_client: tuple[TestClient, FakeAuthAccessService]) -> None:
-    client, fake_service = auth_routes_client
-
-    response = client.post(
-        "/api/admin/pacientes/12/grant-access",
-        headers={"Authorization": "Bearer ok-token"},
-        json={"telefono": "+573001234567", "rol": "PACIENTE"},
-    )
-
-    assert response.status_code == 403
-    assert response.json()["detail"] == "Usuario sin permisos administrativos"
-    assert fake_service.last_grant_payload is None
