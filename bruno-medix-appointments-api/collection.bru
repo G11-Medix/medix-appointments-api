@@ -3,7 +3,7 @@ auth {
 }
 
 vars:pre-request {
-  API_URL: http://localhost:8000
+  API_URL: http://localhost:8001
   API_PREFIX: /api
   SUPABASE_URL: {{process.env.SUPABASE_URL}}
   SUPABASE_ANON_KEY: {{process.env.SUPABASE_ANON_KEY}}
@@ -43,7 +43,7 @@ vars:pre-request {
 
 docs {
   ### Requisitos
-  - Levantar `medix-appointments-api` en `http://localhost:8000`.
+  - Levantar `medix-appointments-api` en `http://localhost:8001`.
   - Configurar `IPS_ROUTES_JSON` en `.env` o `docker-compose.yml` para enrutar `id_institucion` a la IPS mock correspondiente.
   - Levantar `ips-mock-service` como servicio de IPS mock para que funcionen endpoints de citas y disponibilidad.
   - Crear `bruno-medix-appointments-api/.env` a partir de `bruno-medix-appointments-api/.env.example`.

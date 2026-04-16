@@ -16,8 +16,8 @@ uvicorn app.main:app --reload
 ### Docs
 
 ```curl
-http://localhost:8000/docs
-http://localhost:8000/redoc
+http://localhost:8001/docs
+http://localhost:8001/redoc
 ```
 
 ### Autenticación
@@ -66,5 +66,5 @@ El `docker-compose.yml` ya deja configurado `IPS_ROUTES_JSON` para enrutar:
 
 ```bash
 docker build -t medix-api -f dockerfile .
-docker run --env-file .env -p 8000:8000 medix-api
+docker run --env-file .env -p 8001:8001 medix-api
 ```
