@@ -62,10 +62,25 @@ def client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
             assert access_token == "ok-token"
             return _cita_response(estado="cancelled")
 
+        def list_citas_app_by_paciente_doc(self, supabase, id_paciente: int, access_token: str | None = None):  # noqa: ANN001
+            assert id_paciente == 4
+            assert access_token == "ok-token"
+            assert supabase is not None
+            return [
+                {
+                    "id": 10,
+                    "nombre_institucion": "Clinica Central",
+                    "especialidad": "Medicina general",
+                    "fecha_hora_cupo": "2026-04-01T08:00:00",
+                }
+            ]
+
     monkeypatch.setattr(cita_module, "get_access_token_from_state", lambda _request: "ok-token")
     app = FastAPI()
     app.dependency_overrides[cita_module.get_cita_service] = lambda: FakeCitaService()
+    app.dependency_overrides[cita_module.get_supabase_client] = lambda: object()
     app.include_router(cita_module.router, prefix="/api")
+    app.include_router(cita_module.patient_router, prefix="/api")
     return TestClient(app)
 
 
@@ -126,3 +141,17 @@ def test_route_propagates_502_504(client: TestClient) -> None:
         json={"motivo": "Paciente no asiste"},
     )
     assert timeout.status_code == 504
+
+
+def test_patient_citas_route_passes_access_token(client: TestClient) -> None:
+    response = client.get("/api/pacientes/4/citas")
+
+    assert response.status_code == 200
+    assert response.json() == [
+        {
+            "id": 10,
+            "nombre_ins": "Clinica Central",
+            "especialidad": "Medicina general",
+            "fecha_hora_cupo": "2026-04-01T08:00:00",
+        }
+    ]

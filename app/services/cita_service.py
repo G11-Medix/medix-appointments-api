@@ -12,6 +12,7 @@ from app.services.ips_mock_gateway import IpsMockGateway
 from app.services.ips_route_resolver import IpsRoute, IpsRouteResolver
 from app.services.especialidad_service import EspecialidadService
 from app.services.paciente_service import PacienteService
+from app.services.fhir_interop import fhir_headers
 
 LOGGER = logging.getLogger(__name__)
 
@@ -204,6 +205,7 @@ class CitaService:
         self,
         supabase: Client,
         numero_documento: int,
+        access_token: str | None = None,
     ) -> list[dict[str, Any]]:
         instituciones = self.institucion_service.list_instituciones(supabase)
         all_citas: list[dict[str, Any]] = []
@@ -218,9 +220,9 @@ class CitaService:
                 response = self._client().request(
                     method="GET",
                     base_url=route.base_url,
-                    api_key=route.api_key,
                     path="/api/v1/citas",
                     params={"numero_documento": numero_documento},
+                    extra_headers=fhir_headers(access_token),
                 )
 
                 if isinstance(response, list):
@@ -242,6 +244,7 @@ class CitaService:
         self,
         supabase: Client,
         id_paciente: int,
+        access_token: str | None = None,
     ) -> list[CitaAppResponse]:
         instituciones = self.institucion_service.list_instituciones(supabase)
         inst_map = {
@@ -260,6 +263,7 @@ class CitaService:
         rows = self.list_all_citas_by_paciente_doc(
             supabase=supabase,
             numero_documento=paciente["numero_documento"],
+            access_token=access_token,
         )
         return [
             CitaAppResponse(
