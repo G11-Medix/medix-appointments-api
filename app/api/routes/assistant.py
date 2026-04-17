@@ -44,7 +44,7 @@ def schedule_appointment(
     return service.schedule_appointment(
         id_paciente=payload.id_paciente,
         id_institucion=payload.id_institucion,
-        id_especialidad=payload.id_especialidad,
+        codigo_reps=payload.codigo_reps,
         fecha=payload.fecha,
         hora=payload.hora,
         access_token=get_access_token_from_state(request),
@@ -76,7 +76,7 @@ def reschedule_appointment(
     return service.reschedule_appointment(
         id_cita=id_cita,
         id_institucion=payload.id_institucion,
-        id_especialidad=payload.id_especialidad,
+        codigo_reps=payload.codigo_reps,
         nueva_fecha=payload.nueva_fecha,
         nueva_hora=payload.nueva_hora,
         access_token=get_access_token_from_state(request),

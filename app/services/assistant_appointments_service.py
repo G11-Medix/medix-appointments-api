@@ -36,12 +36,12 @@ class AssistantAppointmentsService:
 
     def list_instituciones_by_especialidad(
         self,
-        id_especialidad: int,
+        codigo_reps: int,
         access_token: str | None = None,
     ) -> list[AssistantInstitutionResponse]:
         instituciones: list[AssistantInstitutionResponse] = []
         for route in self.gateway.list_routes():
-            providers = self.gateway.list_providers(route, id_especialidad=id_especialidad, access_token=access_token)
+            providers = self.gateway.list_providers(route, id_especialidad=codigo_reps, access_token=access_token)
             if not providers:
                 continue
 
@@ -51,7 +51,7 @@ class AssistantAppointmentsService:
                     id_institucion=route.id_institucion,
                     nombre=str(current_ips.get("nombre") or f"IPS {route.id_institucion}"),
                     estado=_map_institution_status(str(current_ips.get("estado") or "")),
-                    especialidades=[id_especialidad],
+                    especialidades=[codigo_reps],
                 )
             )
         return instituciones
@@ -59,7 +59,7 @@ class AssistantAppointmentsService:
     def get_disponibilidad(
         self,
         id_institucion: int,
-        id_especialidad: int,
+        codigo_reps: int,
         fecha_desde: date,
         dias: int,
         access_token: str | None = None,
@@ -69,7 +69,7 @@ class AssistantAppointmentsService:
 
         route = self.gateway.get_route(id_institucion)
         current_ips = self.gateway.get_current_ips(route, access_token=access_token)
-        provider_rows = self.gateway.list_providers(route, id_especialidad=id_especialidad, access_token=access_token)
+        provider_rows = self.gateway.list_providers(route, id_especialidad=codigo_reps, access_token=access_token)
         provider_names = {int(row["id"]): str(row["nombre_completo"]) for row in provider_rows}
 
         slots_by_date: dict[date, list[AssistantAvailabilitySlot]] = defaultdict(list)
@@ -102,7 +102,7 @@ class AssistantAppointmentsService:
         return AssistantAvailabilityResponse(
             id_institucion=id_institucion,
             nombre_institucion=str(current_ips.get("nombre") or f"IPS {id_institucion}"),
-            id_especialidad=id_especialidad,
+            codigo_reps=codigo_reps,
             disponibilidad=disponibilidad,
         )
 
@@ -110,13 +110,13 @@ class AssistantAppointmentsService:
         self,
         id_paciente: int,
         id_institucion: int,
-        id_especialidad: int,
+        codigo_reps: int,
         fecha: date,
         hora: time,
         access_token: str | None = None,
     ) -> AssistantAppointmentActionResponse:
         route = self.gateway.get_route(id_institucion)
-        slot = self._find_exact_slot(route, id_especialidad, fecha, hora, access_token=access_token)
+        slot = self._find_exact_slot(route, codigo_reps, fecha, hora, access_token=access_token)
         cita = self.gateway.create_appointment(
             route=route,
             id_paciente=id_paciente,
@@ -147,13 +147,13 @@ class AssistantAppointmentsService:
         self,
         id_cita: int,
         id_institucion: int,
-        id_especialidad: int,
+        codigo_reps: int,
         nueva_fecha: date,
         nueva_hora: time,
         access_token: str | None = None,
     ) -> AssistantAppointmentActionResponse:
         route = self.gateway.get_route(id_institucion)
-        slot = self._find_exact_slot(route, id_especialidad, nueva_fecha, nueva_hora, access_token=access_token)
+        slot = self._find_exact_slot(route, codigo_reps, nueva_fecha, nueva_hora, access_token=access_token)
         cita = self.gateway.reschedule_appointment(
             route=route,
             id_cita=id_cita,
@@ -189,14 +189,14 @@ class AssistantAppointmentsService:
     def _find_exact_slot(
         self,
         route: IpsRoute,
-        id_especialidad: int,
+        codigo_reps: int,
         fecha: date,
         hora: time,
         access_token: str | None = None,
     ) -> AssistantAvailabilitySlot:
         disponibilidad = self.get_disponibilidad(
             id_institucion=route.id_institucion,
-            id_especialidad=id_especialidad,
+            codigo_reps=codigo_reps,
             fecha_desde=fecha,
             dias=1,
             access_token=access_token,

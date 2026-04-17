@@ -58,25 +58,25 @@ class FakeEspecialidadService:
 
 
 class FakeAssistantService:
-    def list_instituciones_by_especialidad(self, id_especialidad: int, access_token: str | None = None):
-        assert id_especialidad == 1
+    def list_instituciones_by_especialidad(self, codigo_reps: int, access_token: str | None = None):
+        assert codigo_reps == 302
         assert access_token == "ok-token"
-        return [{"id_institucion": 1, "nombre": "IPS Demo", "estado": "ACTIVA", "especialidades": [1]}]
+        return [{"id_institucion": 1, "nombre": "IPS Demo", "estado": "ACTIVA", "especialidades": [302]}]
 
     def get_disponibilidad(
         self,
         id_institucion: int,
-        id_especialidad: int,
+        codigo_reps: int,
         fecha_desde: date,
         dias: int,
         access_token: str | None = None,
     ):
-        assert (id_institucion, id_especialidad, fecha_desde, dias) == (1, 1, date(2026, 4, 10), 7)
+        assert (id_institucion, codigo_reps, fecha_desde, dias) == (1, 302, date(2026, 4, 10), 7)
         assert access_token == "ok-token"
         return {
             "id_institucion": 1,
             "nombre_institucion": "IPS Demo",
-            "id_especialidad": 1,
+            "codigo_reps": 302,
             "disponibilidad": [
                 {
                     "fecha": "2026-04-10",
@@ -96,15 +96,15 @@ class FakeAssistantService:
         self,
         id_paciente: int,
         id_institucion: int,
-        id_especialidad: int,
+        codigo_reps: int,
         fecha: date,
         hora: time,
         access_token: str | None = None,
     ):
-        assert (id_paciente, id_institucion, id_especialidad, fecha, hora) == (
+        assert (id_paciente, id_institucion, codigo_reps, fecha, hora) == (
             12,
             1,
-            1,
+            302,
             date(2026, 4, 10),
             time(10, 0, 0),
         )
@@ -146,15 +146,15 @@ class FakeAssistantService:
         self,
         id_cita: int,
         id_institucion: int,
-        id_especialidad: int,
+        codigo_reps: int,
         nueva_fecha: date,
         nueva_hora: time,
         access_token: str | None = None,
     ):
-        assert (id_cita, id_institucion, id_especialidad, nueva_fecha, nueva_hora) == (
+        assert (id_cita, id_institucion, codigo_reps, nueva_fecha, nueva_hora) == (
             100,
             1,
-            1,
+            302,
             date(2026, 4, 11),
             time(14, 0, 0),
         )
@@ -215,11 +215,11 @@ def test_assistant_endpoints(client: TestClient) -> None:
     headers = {"Authorization": "Bearer ok-token"}
 
     specialties = client.get("/api/especialidades", headers=headers)
-    institutions = client.get("/api/instituciones", headers=headers, params={"id_especialidad": 1})
+    institutions = client.get("/api/instituciones", headers=headers, params={"codigo_reps": 302})
     availability = client.get(
         "/api/instituciones/1/disponibilidad",
         headers=headers,
-        params={"id_especialidad": 1, "fecha_desde": "2026-04-10", "dias": 7},
+        params={"codigo_reps": 302, "fecha_desde": "2026-04-10", "dias": 7},
     )
     patient = client.get(
         "/api/pacientes/buscar",
@@ -232,7 +232,7 @@ def test_assistant_endpoints(client: TestClient) -> None:
         json={
             "id_paciente": 12,
             "id_institucion": 1,
-            "id_especialidad": 1,
+            "codigo_reps": 302,
             "fecha": "2026-04-10",
             "hora": "10:00:00",
         },
@@ -247,7 +247,7 @@ def test_assistant_endpoints(client: TestClient) -> None:
         headers=headers,
         json={
             "id_institucion": 1,
-            "id_especialidad": 1,
+            "codigo_reps": 302,
             "nueva_fecha": "2026-04-11",
             "nueva_hora": "14:00:00",
         },

@@ -30,14 +30,14 @@ class AssistantAvailabilityDay(BaseModel):
 class AssistantAvailabilityResponse(BaseModel):
     id_institucion: int
     nombre_institucion: str
-    id_especialidad: int
+    codigo_reps: int
     disponibilidad: list[AssistantAvailabilityDay]
 
 
 class AssistantScheduleAppointmentRequest(BaseModel):
     id_paciente: int
     id_institucion: int
-    id_especialidad: int
+    codigo_reps: int
     fecha: date
     hora: time
 
@@ -49,7 +49,7 @@ class AssistantCancelAppointmentRequest(BaseModel):
 
 class AssistantRescheduleAppointmentRequest(BaseModel):
     id_institucion: int
-    id_especialidad: int
+    codigo_reps: int
     nueva_fecha: date
     nueva_hora: time
 

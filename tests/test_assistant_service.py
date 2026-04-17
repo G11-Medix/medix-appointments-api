@@ -176,7 +176,7 @@ def test_schedule_appointment_uses_deterministic_provider() -> None:
     response = AssistantAppointmentsService(gateway=gateway).schedule_appointment(
         id_paciente=12,
         id_institucion=1,
-        id_especialidad=302,
+        codigo_reps=302,
         fecha=date(2026, 4, 10),
         hora=time(10, 0, 0),
     )
@@ -190,7 +190,7 @@ def test_schedule_appointment_fails_when_slot_missing() -> None:
         AssistantAppointmentsService(gateway=FakeGateway()).schedule_appointment(
             id_paciente=12,
             id_institucion=1,
-            id_especialidad=302,
+            codigo_reps=302,
             fecha=date(2026, 4, 10),
             hora=time(9, 0, 0),
         )
