@@ -7,6 +7,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from app.api.dependencies import auth as auth_module
+from app.api.routes import assistant as assistant_module
 from app.api.routes.paciente import registration_router as paciente_registration_router
 from app.api.router import api_router
 from app.api.routes import cita as cita_module
@@ -60,6 +61,7 @@ def _build_cita_response(estado: str = "scheduled") -> dict:
         "id": 10,
         "id_paciente": 1,
         "id_prestador": 1,
+        "nombre_prestador": "Dr. Juan Perez",
         "id_especialidad": 1,
         "fecha_hora_cupo": "2026-04-01T08:00:00",
         "estado": estado,
@@ -89,8 +91,30 @@ def auth_client(monkeypatch: pytest.MonkeyPatch) -> tuple[TestClient, str, objec
                     "direccion": "Calle 1",
                     "telefono": "3000000000",
                     "estado": "ACTIVO",
+                    "longitud": -74.0721,
+                    "latitud": 4.711,
+                    "logo_url": "https://example.com/logo.png",
                 }
             ]
+
+        def get_institucion(self, supabase, id_institucion: int):  # noqa: ANN001
+            assert id_institucion == 1
+            return {
+                "id_institucion": 1,
+                "nombre": "Hospital Demo",
+                "nit": "900000000-1",
+                "direccion": "Calle 1",
+                "telefono": "3000000000",
+                "estado": "ACTIVO",
+                "longitud": -74.0721,
+                "latitud": 4.711,
+                "logo_url": "https://example.com/logo.png",
+            }
+
+    class FakeEspecialidadService:
+        def list_especialidades(self, supabase, limit: int = 50):  # noqa: ANN001
+            assert limit == 50
+            return [{"id_especialidad": 1, "nombre": "Cardiologia", "codigo_reps": 302}]
 
     class FakePacienteService:
         def __init__(self) -> None:
@@ -155,35 +179,58 @@ def auth_client(monkeypatch: pytest.MonkeyPatch) -> tuple[TestClient, str, objec
             return None
 
     class FakeCitaService:
-        def create_cita(self, id_institucion: int, payload):  # noqa: ANN001
+        def create_cita(self, id_institucion: int, payload, access_token=None):  # noqa: ANN001
             assert id_institucion == 1
-            assert payload.id_paciente == 1
+            assert payload.tipo_documento == "CC"
+            assert payload.numero_documento == "123"
+            assert access_token == "ok-token"
             return _build_cita_response()
 
-        def get_cita(self, id_institucion: int, id_cita: int):  # noqa: ANN001
+        def get_cita(self, id_institucion: int, id_cita: int, access_token=None):  # noqa: ANN001
             assert id_institucion == 1
             assert id_cita == 10
+            assert access_token == "ok-token"
             return _build_cita_response()
 
-        def list_citas(self, id_institucion: int, *, id_paciente=None, desde=None, hasta=None):  # noqa: ANN001
+        def get_cita_confirmacion(self, supabase, id_institucion: int, id_cita: int, access_token=None):  # noqa: ANN001
+            assert supabase is not None
             assert id_institucion == 1
+            assert id_cita == 10
+            assert access_token == "ok-token"
+            return {
+                "doctor": "Dr. Juan Perez",
+                "fecha": "2026-04-01T08:00:00",
+                "institucion": "Hospital Demo",
+                "direccion": "Calle 1",
+                "latitud": 4.711,
+                "longitud": -74.0721,
+                "estado": "scheduled",
+            }
+
+        def list_citas(self, id_institucion: int, *, id_paciente=None, desde=None, hasta=None, access_token=None):  # noqa: ANN001
+            assert id_institucion == 1
+            assert access_token == "ok-token"
             return [_build_cita_response()]
 
-        def update_cita(self, id_institucion: int, id_cita: int, payload):  # noqa: ANN001
+        def update_cita(self, id_institucion: int, id_cita: int, payload, access_token=None):  # noqa: ANN001
             assert id_institucion == 1
             assert id_cita == 10
             assert isinstance(payload.nueva_fecha_hora_cupo, datetime)
+            assert access_token == "ok-token"
             return _build_cita_response()
 
-        def delete_cita(self, id_institucion: int, id_cita: int, payload):  # noqa: ANN001
+        def delete_cita(self, id_institucion: int, id_cita: int, payload, access_token=None):  # noqa: ANN001
             assert id_institucion == 1
             assert id_cita == 10
             assert payload.motivo is not None
+            assert access_token == "ok-token"
             return _build_cita_response(estado="cancelled")
 
     fake_paciente_service = FakePacienteService()
 
     app = FastAPI()
+    app.dependency_overrides[assistant_module.get_especialidad_service] = lambda: FakeEspecialidadService()
+    app.dependency_overrides[assistant_module.get_supabase_client] = lambda: object()
     app.dependency_overrides[institucion_module.get_institucion_service] = lambda: FakeInstitucionService()
     app.dependency_overrides[institucion_module.get_supabase_client] = lambda: object()
     app.dependency_overrides[paciente_module.get_paciente_service] = lambda: fake_paciente_service
@@ -214,9 +261,27 @@ def test_api_accepts_valid_token_in_representative_endpoints(auth_client: tuple[
 
     institucion_resp = client.get("/api/instituciones/", headers=headers)
     cita_resp = client.get("/api/instituciones/1/citas/10", headers=headers)
+    especialidad_resp = client.get("/api/especialidades", headers=headers)
 
     assert institucion_resp.status_code == 200
     assert cita_resp.status_code == 200
+    assert especialidad_resp.status_code == 200
+    assert institucion_resp.json()[0] == {
+        "id_institucion": 1,
+        "nombre": "Hospital Demo",
+        "nit": "900000000-1",
+        "direccion": "Calle 1",
+        "telefono": "3000000000",
+        "estado": "ACTIVO",
+        "longitud": -74.0721,
+        "latitud": 4.711,
+        "logo_url": "https://example.com/logo.png",
+    }
+    assert especialidad_resp.json()[0] == {
+        "id_especialidad": 1,
+        "nombre": "Cardiologia",
+        "codigo_reps": 302,
+    }
 
 
 def test_paciente_create_forces_id_usuario_from_token(

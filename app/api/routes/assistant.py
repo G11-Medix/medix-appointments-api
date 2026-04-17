@@ -1,15 +1,12 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends
+from supabase import Client
 
-from app.schemas.assistant import (
-    AssistantAppointmentActionResponse,
-    AssistantCancelAppointmentRequest,
-    AssistantRescheduleAppointmentRequest,
-    AssistantScheduleAppointmentRequest,
-    AssistantSpecialtyResponse,
-)
+from app.db.supabase import get_supabase_client
+from app.schemas.especialidad import EspecialidadResponse
 from app.services.assistant_appointments_service import AssistantAppointmentsService
+from app.services.especialidad_service import EspecialidadService
 
 router = APIRouter(tags=["Assistant"])
 
@@ -18,50 +15,14 @@ def get_assistant_service() -> AssistantAppointmentsService:
     return AssistantAppointmentsService()
 
 
-@router.get("/especialidades", response_model=list[AssistantSpecialtyResponse])
+def get_especialidad_service() -> EspecialidadService:
+    return EspecialidadService()
+
+
+@router.get("/especialidades", response_model=list[EspecialidadResponse])
 def list_specialties(
-    service: Annotated[AssistantAppointmentsService, Depends(get_assistant_service)] = None,
-) -> list[AssistantSpecialtyResponse]:
-    return service.list_specialties()
-
-
-@router.post("/citas/agendar", response_model=AssistantAppointmentActionResponse, status_code=201)
-def schedule_appointment(
-    payload: AssistantScheduleAppointmentRequest,
-    service: Annotated[AssistantAppointmentsService, Depends(get_assistant_service)] = None,
-) -> AssistantAppointmentActionResponse:
-    return service.schedule_appointment(
-        id_paciente=payload.id_paciente,
-        id_institucion=payload.id_institucion,
-        id_especialidad=payload.id_especialidad,
-        fecha=payload.fecha,
-        hora=payload.hora,
-    )
-
-
-@router.patch("/citas/{id_cita}/cancelar", response_model=AssistantAppointmentActionResponse)
-def cancel_appointment(
-    id_cita: int,
-    payload: AssistantCancelAppointmentRequest,
-    service: Annotated[AssistantAppointmentsService, Depends(get_assistant_service)] = None,
-) -> AssistantAppointmentActionResponse:
-    return service.cancel_appointment(
-        id_cita=id_cita,
-        id_institucion=payload.id_institucion,
-        motivo=payload.motivo,
-    )
-
-
-@router.patch("/citas/{id_cita}/reprogramar", response_model=AssistantAppointmentActionResponse)
-def reschedule_appointment(
-    id_cita: int,
-    payload: AssistantRescheduleAppointmentRequest,
-    service: Annotated[AssistantAppointmentsService, Depends(get_assistant_service)] = None,
-) -> AssistantAppointmentActionResponse:
-    return service.reschedule_appointment(
-        id_cita=id_cita,
-        id_institucion=payload.id_institucion,
-        id_especialidad=payload.id_especialidad,
-        nueva_fecha=payload.nueva_fecha,
-        nueva_hora=payload.nueva_hora,
-    )
+    service: Annotated[EspecialidadService, Depends(get_especialidad_service)] = None,
+    supabase: Client = Depends(get_supabase_client),
+) -> list[EspecialidadResponse]:
+    rows = service.list_especialidades(supabase=supabase)
+    return [EspecialidadResponse.model_validate(row) for row in rows]

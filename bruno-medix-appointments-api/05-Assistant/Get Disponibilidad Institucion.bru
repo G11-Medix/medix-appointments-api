@@ -1,15 +1,19 @@
 meta {
-  name: Get Disponibilidad Institucion
+  name: [IPS-MOCK] Get Disponibilidad Institucion
   type: http
   seq: 16
 }
 
 get {
-  url: {{API_URL}}{{API_PREFIX}}/instituciones/{{ID_INSTITUCION}}/disponibilidad?id_especialidad={{ID_ESPECIALIDAD}}&fecha_desde={{FECHA_DISPONIBILIDAD}}&dias={{DIAS_DISPONIBILIDAD}}
+  url: {{API_URL}}{{API_PREFIX}}/instituciones/{{ID_INSTITUCION}}/disponibilidad?codigo_reps={{CODIGO_REPS}}&fecha_desde={{FECHA_DISPONIBILIDAD}}&dias={{DIAS_DISPONIBILIDAD}}
   body: none
   auth: none
 }
 
 headers {
   Authorization: Bearer {{ACCESS_TOKEN}}
+}
+
+docs {
+  [IPS-MOCK] Este endpoint consulta disponibilidad en la IPS mock configurada para la institución.
 }

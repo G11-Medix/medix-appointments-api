@@ -1,12 +1,14 @@
-from datetime import datetime
+from datetime import date, datetime, time
 
 from pydantic import BaseModel, ConfigDict, Field
 
 
 class CitaCreate(BaseModel):
-    id_paciente: int
+    tipo_documento: str = Field(min_length=1, max_length=20)
+    numero_documento: str = Field(min_length=1, max_length=20)
     id_prestador: int
-    fecha_hora_cupo: datetime
+    fecha: date
+    hora: time
 
 
 class CitaUpdate(BaseModel):
@@ -21,6 +23,7 @@ class CitaResponse(BaseModel):
     id: int
     id_paciente: int
     id_prestador: int
+    nombre_prestador: str | None = None
     id_especialidad: int
     fecha_hora_cupo: datetime
     estado: str
@@ -28,10 +31,21 @@ class CitaResponse(BaseModel):
     fecha_creacion: datetime
     fecha_actualizacion: datetime
 
+
+class CitaConfirmacionResponse(BaseModel):
+    doctor: str
+    fecha: datetime
+    institucion: str
+    direccion: str | None = None
+    latitud: float | None = None
+    longitud: float | None = None
+    estado: str
+
 class CitaAppResponse(BaseModel):
     id: int
     nombre_institucion: str = Field(serialization_alias="nombre_ins")
     especialidad: str
-    fecha_hora_cupo: datetime
+    fecha: date
+    hora: time
 
     model_config = ConfigDict(populate_by_name=True)

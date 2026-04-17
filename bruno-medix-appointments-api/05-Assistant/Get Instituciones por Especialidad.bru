@@ -1,15 +1,19 @@
 meta {
-  name: Get Instituciones por Especialidad
+  name: [IPS-MOCK] Get Instituciones por Especialidad
   type: http
   seq: 15
 }
 
 get {
-  url: {{API_URL}}{{API_PREFIX}}/instituciones/?id_especialidad={{ID_ESPECIALIDAD}}
+  url: {{API_URL}}{{API_PREFIX}}/instituciones/?codigo_reps={{CODIGO_REPS}}
   body: none
   auth: none
 }
 
 headers {
   Authorization: Bearer {{ACCESS_TOKEN}}
+}
+
+docs {
+  [IPS-MOCK] Este endpoint filtra instituciones consultando prestadores en las IPS mock configuradas.
 }

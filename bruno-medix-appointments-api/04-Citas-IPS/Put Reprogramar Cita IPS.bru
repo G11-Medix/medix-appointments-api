@@ -1,5 +1,5 @@
 meta {
-  name: Put Reprogramar Cita IPS
+  name: [IPS-MOCK] Put Reprogramar Cita IPS
   type: http
   seq: 10
 }
@@ -12,6 +12,10 @@ put {
 
 headers {
   Authorization: Bearer {{ACCESS_TOKEN}}
+}
+
+docs {
+  [IPS-MOCK] Este endpoint reprograma la cita en la IPS mock configurada para la institución.
 }
 
 body:json {

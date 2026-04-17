@@ -16,8 +16,8 @@ uvicorn app.main:app --reload
 ### Docs
 
 ```curl
-http://localhost:8000/docs
-http://localhost:8000/redoc
+http://localhost:8001/docs
+http://localhost:8001/redoc
 ```
 
 ### Autenticación
@@ -26,8 +26,6 @@ http://localhost:8000/redoc
 - El token se valida contra Supabase (`auth.get_user`).
 - Además, el usuario debe existir en tabla `Usuario` con estado `ACTIVO`.
 - `GET /auth/eligibility/{telefono}` permanece público y responde si un paciente está habilitado para OTP por teléfono.
-- `POST /api/admin/pacientes/{id_paciente}/grant-access` requiere un usuario autenticado con rol administrativo (`ADMIN`, `ADMINISTRADOR` o `SUPERADMIN`).
-- La provisión administrativa usa `SUPABASE_SERVICE_ROLE_KEY` solo en backend para crear o reconciliar usuarios en Supabase Auth.
 - Respuestas de acceso:
   - `401` para token ausente, malformado, inválido o expirado.
   - `403` para token válido sin registro local en `Usuario` o con estado distinto de `ACTIVO`.
@@ -55,9 +53,16 @@ pytest
 docker compose up --build
 ```
 
+El `docker-compose.yml` ya deja configurado `IPS_ROUTES_JSON` para enrutar:
+- `1` -> `ips_santa_fe:4011`
+- `2` -> `ips_country:4012`
+- `3` -> `ips_clinica_colombia:4013`
+- `4` -> `ips_san_ignacio:4014`
+- `5` -> `ips_mederi:4015`
+
 ### Build and Run (Docker)
 
 ```bash
 docker build -t medix-api -f dockerfile .
-docker run --env-file .env -p 8000:8000 medix-api
+docker run --env-file .env -p 8001:8001 medix-api
 ```

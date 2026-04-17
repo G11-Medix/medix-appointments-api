@@ -1,11 +1,12 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from supabase import Client
 
 from app.api.dependencies.auth import (
     AuthenticatedTokenContext,
     AuthenticatedUserContext,
+    get_access_token_from_state,
     get_authenticated_user_from_state,
     require_authenticated_token_user,
 )
@@ -36,6 +37,7 @@ def list_pacientes(
 
 @protected_router.get("/buscar", response_model=AssistantPatientResponse)
 def find_paciente_by_document(
+    request: Request,
     tipo_documento: str = Query(..., min_length=1),
     numero_documento: str = Query(..., min_length=1),
     assistant_service: Annotated[AssistantAppointmentsService, Depends(get_assistant_service)] = None,
@@ -43,6 +45,7 @@ def find_paciente_by_document(
     return assistant_service.find_patient_by_document(
         tipo_documento=tipo_documento,
         numero_documento=numero_documento,
+        access_token=get_access_token_from_state(request),
     )
 
 

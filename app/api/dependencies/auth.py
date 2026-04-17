@@ -37,6 +37,7 @@ def require_authenticated_token_user(
         raise _unauthorized("Token inválido") from exc
 
     request.state.authenticated_user_id = user_id
+    request.state.access_token = token
     request.state.authenticated_token_user = context
     return context
 
@@ -82,6 +83,13 @@ def get_authenticated_user_from_state(request: Request) -> AuthenticatedUserCont
     if isinstance(context, AuthenticatedUserContext):
         return context
 
+    raise _unauthorized("Sesión no autenticada")
+
+
+def get_access_token_from_state(request: Request) -> str:
+    token = getattr(request.state, "access_token", None)
+    if isinstance(token, str) and token.strip():
+        return token
     raise _unauthorized("Sesión no autenticada")
 
 

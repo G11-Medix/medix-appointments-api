@@ -1,4 +1,4 @@
-from datetime import date, time
+from datetime import date
 
 import pytest
 from fastapi import FastAPI
@@ -50,20 +50,33 @@ class FakeSupabase:
         return FakeUsuarioQuery(self._users)
 
 
+class FakeEspecialidadService:
+    def list_especialidades(self, supabase, limit: int = 50):  # noqa: ANN001
+        assert limit == 50
+        assert supabase is not None
+        return [{"id_especialidad": 1, "nombre": "Cardiologia", "codigo_reps": 302}]
+
+
 class FakeAssistantService:
-    def list_specialties(self):
-        return [{"id": 1, "nombre": "Cardiologia"}]
+    def list_instituciones_by_especialidad(self, codigo_reps: int, access_token: str | None = None):
+        assert codigo_reps == 302
+        assert access_token == "ok-token"
+        return [{"id_institucion": 1, "nombre": "IPS Demo", "estado": "ACTIVA", "especialidades": [302]}]
 
-    def list_instituciones_by_especialidad(self, id_especialidad: int):
-        assert id_especialidad == 1
-        return [{"id_institucion": 1, "nombre": "IPS Demo", "estado": "ACTIVA", "especialidades": [1]}]
-
-    def get_disponibilidad(self, id_institucion: int, id_especialidad: int, fecha_desde: date, dias: int):
-        assert (id_institucion, id_especialidad, fecha_desde, dias) == (1, 1, date(2026, 4, 10), 7)
+    def get_disponibilidad(
+        self,
+        id_institucion: int,
+        codigo_reps: int,
+        fecha_desde: date,
+        dias: int,
+        access_token: str | None = None,
+    ):
+        assert (id_institucion, codigo_reps, fecha_desde, dias) == (1, 302, date(2026, 4, 10), 7)
+        assert access_token == "ok-token"
         return {
             "id_institucion": 1,
             "nombre_institucion": "IPS Demo",
-            "id_especialidad": 1,
+            "codigo_reps": 302,
             "disponibilidad": [
                 {
                     "fecha": "2026-04-10",
@@ -79,71 +92,9 @@ class FakeAssistantService:
             ],
         }
 
-    def schedule_appointment(self, id_paciente: int, id_institucion: int, id_especialidad: int, fecha: date, hora: time):
-        assert (id_paciente, id_institucion, id_especialidad, fecha, hora) == (
-            12,
-            1,
-            1,
-            date(2026, 4, 10),
-            time(10, 0, 0),
-        )
-        return {
-            "mensaje": "Cita agendada correctamente",
-            "cita": {
-                "id": 100,
-                "id_paciente": 12,
-                "id_prestador": 5,
-                "id_especialidad": 1,
-                "fecha_hora_cupo": "2026-04-10T10:00:00",
-                "estado": "RESERVADA",
-                "motivo_cancelacion": None,
-                "fecha_creacion": "2026-04-01T08:00:00",
-                "fecha_actualizacion": "2026-04-01T08:00:00",
-            },
-        }
-
-    def cancel_appointment(self, id_cita: int, id_institucion: int, motivo: str | None):
-        assert (id_cita, id_institucion, motivo) == (100, 1, "No puedo asistir")
-        return {
-            "mensaje": "Cita cancelada correctamente",
-            "cita": {
-                "id": 100,
-                "id_paciente": 12,
-                "id_prestador": 5,
-                "id_especialidad": 1,
-                "fecha_hora_cupo": "2026-04-10T10:00:00",
-                "estado": "CANCELADA",
-                "motivo_cancelacion": "No puedo asistir",
-                "fecha_creacion": "2026-04-01T08:00:00",
-                "fecha_actualizacion": "2026-04-01T08:00:00",
-            },
-        }
-
-    def reschedule_appointment(self, id_cita: int, id_institucion: int, id_especialidad: int, nueva_fecha: date, nueva_hora: time):
-        assert (id_cita, id_institucion, id_especialidad, nueva_fecha, nueva_hora) == (
-            100,
-            1,
-            1,
-            date(2026, 4, 11),
-            time(14, 0, 0),
-        )
-        return {
-            "mensaje": "Cita reprogramada correctamente",
-            "cita": {
-                "id": 100,
-                "id_paciente": 12,
-                "id_prestador": 5,
-                "id_especialidad": 1,
-                "fecha_hora_cupo": "2026-04-11T14:00:00",
-                "estado": "RESERVADA",
-                "motivo_cancelacion": None,
-                "fecha_creacion": "2026-04-01T08:00:00",
-                "fecha_actualizacion": "2026-04-01T08:00:00",
-            },
-        }
-
-    def find_patient_by_document(self, tipo_documento: str, numero_documento: str):
+    def find_patient_by_document(self, tipo_documento: str, numero_documento: str, access_token: str | None = None):
         assert (tipo_documento, numero_documento) == ("CC", "123")
+        assert access_token == "ok-token"
         return {
             "id_paciente": 12,
             "tipo_documento": "CC",
@@ -170,6 +121,8 @@ def client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
     app = FastAPI()
     fake_service = FakeAssistantService()
     app.dependency_overrides[assistant_module.get_assistant_service] = lambda: fake_service
+    app.dependency_overrides[assistant_module.get_especialidad_service] = lambda: FakeEspecialidadService()
+    app.dependency_overrides[assistant_module.get_supabase_client] = lambda: object()
     app.dependency_overrides[institucion_module.get_assistant_service] = lambda: fake_service
     app.dependency_overrides[paciente_module.get_assistant_service] = lambda: fake_service
     app.include_router(api_router, prefix="/api")
@@ -180,54 +133,22 @@ def test_assistant_endpoints(client: TestClient) -> None:
     headers = {"Authorization": "Bearer ok-token"}
 
     specialties = client.get("/api/especialidades", headers=headers)
-    institutions = client.get("/api/instituciones", headers=headers, params={"id_especialidad": 1})
+    institutions = client.get("/api/instituciones", headers=headers, params={"codigo_reps": 302})
     availability = client.get(
         "/api/instituciones/1/disponibilidad",
         headers=headers,
-        params={"id_especialidad": 1, "fecha_desde": "2026-04-10", "dias": 7},
+        params={"codigo_reps": 302, "fecha_desde": "2026-04-10", "dias": 7},
     )
     patient = client.get(
         "/api/pacientes/buscar",
         headers=headers,
         params={"tipo_documento": "CC", "numero_documento": "123"},
     )
-    scheduled = client.post(
-        "/api/citas/agendar",
-        headers=headers,
-        json={
-            "id_paciente": 12,
-            "id_institucion": 1,
-            "id_especialidad": 1,
-            "fecha": "2026-04-10",
-            "hora": "10:00:00",
-        },
-    )
-    cancelled = client.patch(
-        "/api/citas/100/cancelar",
-        headers=headers,
-        json={"id_institucion": 1, "motivo": "No puedo asistir"},
-    )
-    rescheduled = client.patch(
-        "/api/citas/100/reprogramar",
-        headers=headers,
-        json={
-            "id_institucion": 1,
-            "id_especialidad": 1,
-            "nueva_fecha": "2026-04-11",
-            "nueva_hora": "14:00:00",
-        },
-    )
-
     assert specialties.status_code == 200
     assert institutions.status_code == 200
     assert availability.status_code == 200
     assert patient.status_code == 200
-    assert scheduled.status_code == 201
-    assert cancelled.status_code == 200
-    assert rescheduled.status_code == 200
-    assert specialties.json()[0]["nombre"] == "Cardiologia"
+    assert specialties.json()[0] == {"id_especialidad": 1, "nombre": "Cardiologia", "codigo_reps": 302}
     assert institutions.json()[0]["estado"] == "ACTIVA"
     assert availability.json()["disponibilidad"][0]["slots"][0]["hora"] == "10:00"
     assert patient.json()["id_paciente"] == 12
-    assert scheduled.json()["cita"]["estado"] == "RESERVADA"
-    assert cancelled.json()["cita"]["estado"] == "CANCELADA"

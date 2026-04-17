@@ -3,19 +3,19 @@ auth {
 }
 
 vars:pre-request {
-  API_URL: http://localhost:8000
+  API_URL: http://localhost:8001
   API_PREFIX: /api
   SUPABASE_URL: {{process.env.SUPABASE_URL}}
   SUPABASE_ANON_KEY: {{process.env.SUPABASE_ANON_KEY}}
   SUPABASE_TEST_EMAIL: {{process.env.SUPABASE_TEST_EMAIL}}
   SUPABASE_TEST_PASSWORD: {{process.env.SUPABASE_TEST_PASSWORD}}
-  ID_INSTITUCION: 1
+  ID_INSTITUCION: 2
   ID_EPS: 1
-  ID_ESPECIALIDAD: 1
-  ID_PACIENTE: 18
+  CODIGO_REPS: 302
+  ID_PACIENTE: 19
   ID_PACIENTE_IPS: 1
   PACIENTE_TIPO_DOCUMENTO: CC
-  PACIENTE_NUMERO_DOCUMENTO: 1100101101
+  PACIENTE_NUMERO_DOCUMENTO: 1014977178
   PACIENTE_NOMBRES: Juan
   PACIENTE_APELLIDOS: Perez
   PACIENTE_FECHA_NACIMIENTO: 1990-01-10
@@ -23,7 +23,7 @@ vars:pre-request {
   PACIENTE_CORREO: juan.perez@example.com
   PACIENTE_ESTADO: ACTIVO
   ID_CITA: 1
-  ID_PRESTADOR: 1
+  ID_PRESTADOR: 2
   FECHA_HORA_CITA: 2026-04-01T08:00:00
   FECHA_HORA_REPROGRAMACION: 2026-04-01T09:00:00
   FECHA_DISPONIBILIDAD: 2026-04-10
@@ -34,15 +34,15 @@ vars:pre-request {
   FECHA_DESDE: 2026-04-01T00:00:00
   FECHA_HASTA: 2026-04-30T23:59:59
   MOTIVO_CANCELACION: Paciente no asistira
-  TELEFONO_LOGIN: 3001234567
+  TELEFONO_LOGIN: +573208761377
   ROL_ACCESO: paciente
 }
 
 docs {
   ### Requisitos
-  - Levantar `medix-appointments-api` en `http://localhost:8000`.
-  - Configurar `IPS_ROUTES_JSON` en `.env` para enrutar `id_institucion` a la IPS mock correspondiente.
-  - Levantar `eps-mock-service` como servicio de IPS mock para que funcionen endpoints de citas y disponibilidad.
+  - Levantar `medix-appointments-api` en `http://localhost:8001`.
+  - Configurar `IPS_ROUTES_JSON` en `.env` o `docker-compose.yml` para enrutar `id_institucion` a la IPS mock correspondiente.
+  - Levantar `ips-mock-service` como servicio de IPS mock para que funcionen endpoints de citas y disponibilidad.
   - Crear `bruno-medix-appointments-api/.env` a partir de `bruno-medix-appointments-api/.env.example`.
   - Configurar `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_TEST_EMAIL` y `SUPABASE_TEST_PASSWORD` en ese archivo local para obtener tokens de prueba.
   
@@ -50,10 +50,13 @@ docs {
   - Si creas un paciente nuevo, actualiza `ID_PACIENTE` con el `id_paciente` retornado.
   - Para endpoints de citas usa `ID_PACIENTE_IPS` (paciente existente en la IPS mock).
   - Si creas una cita nueva, actualiza `ID_CITA` con el `id` retornado.
-  - Para endpoints assistant usa `ID_ESPECIALIDAD`, `FECHA_DISPONIBILIDAD`, `HORA_CITA_ASSISTANT`, `NUEVA_FECHA_CITA_ASSISTANT` y `NUEVA_HORA_CITA_ASSISTANT`.
+  - Para endpoints assistant usa `CODIGO_REPS`, `FECHA_DISPONIBILIDAD`, `HORA_CITA_ASSISTANT`, `NUEVA_FECHA_CITA_ASSISTANT` y `NUEVA_HORA_CITA_ASSISTANT`.
   
   ### Flujo de autenticación
   - Ejecuta `Post Supabase Login` para obtener un `access_token`.
   - Usa el valor de `access_token` como `Authorization: Bearer <token>` en los endpoints de `/api/*`.
   - El archivo `bruno-medix-appointments-api/.env` está ignorado por Git para evitar filtrar secretos.
+  
+  ### Marcado de requests
+  - Los requests cuyo bloque `docs` empieza con `[IPS-MOCK]` dependen de `ips-mock-service`.
 }

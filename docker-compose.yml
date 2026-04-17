@@ -8,10 +8,10 @@ services:
       - ./.env
     environment:
       IPS_ROUTES_JSON: >-
-        {"1":{"base_url":"http://ips_clinica_santa_helena:4011","api_key":"ips-csh-key"},"2":{"base_url":"http://ips_hospital_nuevo_horizonte:4012","api_key":"ips-hnh-key"},"3":{"base_url":"http://ips_clinica_prado_caribe:4013","api_key":"ips-cpc-key"}}
+        {"2":{"base_url":"http://ips_santa_fe:4011","api_key":"ips-fsf-key"},"3":{"base_url":"http://ips_country:4012","api_key":"ips-cly-key"},"4":{"base_url":"http://ips_clinica_colombia:4013","api_key":"ips-cuc-key"},"5":{"base_url":"http://ips_san_ignacio:4014","api_key":"ips-hsi-key"},"6":{"base_url":"http://ips_mederi:4015","api_key":"ips-med-key"}}
       IPS_TIMEOUT_SECONDS: "10"
     ports:
-      - "8000:8000"
+      - "8001:8001"
     networks:
       - medix_net
 
