@@ -4,7 +4,8 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class CitaCreate(BaseModel):
-    id_paciente: int
+    tipo_documento: str = Field(min_length=1, max_length=20)
+    numero_documento: str = Field(min_length=1, max_length=20)
     id_prestador: int
     fecha_hora_cupo: datetime
 

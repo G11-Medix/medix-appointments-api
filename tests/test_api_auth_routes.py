@@ -166,7 +166,8 @@ def auth_client(monkeypatch: pytest.MonkeyPatch) -> tuple[TestClient, str, objec
     class FakeCitaService:
         def create_cita(self, id_institucion: int, payload, access_token=None):  # noqa: ANN001
             assert id_institucion == 1
-            assert payload.id_paciente == 1
+            assert payload.tipo_documento == "CC"
+            assert payload.numero_documento == "123"
             assert access_token == "ok-token"
             return _build_cita_response()
 

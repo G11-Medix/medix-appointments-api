@@ -38,9 +38,15 @@ class CitaService:
 
     def create_cita(self, id_institucion: int, payload: CitaCreate, access_token: str | None = None) -> dict[str, Any]:
         route = self._resolve_route(id_institucion)
+        patient = self._gateway().find_patient_by_document(
+            route=route,
+            tipo_documento=payload.tipo_documento,
+            numero_documento=payload.numero_documento,
+            access_token=access_token,
+        )
         return self._gateway().create_appointment(
             route=route,
-            id_paciente=payload.id_paciente,
+            id_paciente=int(patient["id_paciente"]),
             id_prestador=payload.id_prestador,
             fecha_hora_cupo=payload.fecha_hora_cupo,
             id_especialidad=getattr(payload, "id_especialidad", None),

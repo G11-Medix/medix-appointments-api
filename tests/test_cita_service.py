@@ -169,14 +169,20 @@ def test_create_cita_uses_institucion_route() -> None:
 
     service.create_cita(
         id_institucion=1,
-        payload=CitaCreate(id_paciente=1, id_prestador=2, fecha_hora_cupo=datetime(2026, 4, 1, 8, 0, 0)),
+        payload=CitaCreate(
+            tipo_documento="CC",
+            numero_documento="123",
+            id_prestador=2,
+            fecha_hora_cupo=datetime(2026, 4, 1, 8, 0, 0),
+        ),
     )
 
-    assert client.calls[0]["path"] == "/fhir/PractitionerRole"
-    assert client.calls[1]["method"] == "POST"
-    assert client.calls[1]["base_url"] == "http://localhost:4011"
-    assert client.calls[1]["extra_headers"]["Accept"] == "application/fhir+json"
-    assert client.calls[1]["path"] == "/fhir/Appointment"
+    assert client.calls[0]["path"] == "/fhir/Patient"
+    assert client.calls[1]["path"] == "/fhir/PractitionerRole"
+    assert client.calls[2]["method"] == "POST"
+    assert client.calls[2]["base_url"] == "http://localhost:4011"
+    assert client.calls[2]["extra_headers"]["Accept"] == "application/fhir+json"
+    assert client.calls[2]["path"] == "/fhir/Appointment"
 
 
 def test_update_delete_map_to_reprogramar_cancelar() -> None:

@@ -26,7 +26,8 @@ def client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
     class FakeCitaService:
         def create_cita(self, id_institucion: int, payload, access_token: str | None = None):  # noqa: ANN001
             assert id_institucion == 1
-            assert payload.id_paciente == 1
+            assert payload.tipo_documento == "CC"
+            assert payload.numero_documento == "123"
             assert access_token == "ok-token"
             return _cita_response()
 
@@ -87,7 +88,12 @@ def client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
 def test_cita_crud_happy_path(client: TestClient) -> None:
     create_resp = client.post(
         "/api/instituciones/1/citas/",
-        json={"id_paciente": 1, "id_prestador": 1, "fecha_hora_cupo": "2026-04-01T08:00:00"},
+        json={
+            "tipo_documento": "CC",
+            "numero_documento": "123",
+            "id_prestador": 1,
+            "fecha_hora_cupo": "2026-04-01T08:00:00",
+        },
     )
     assert create_resp.status_code == 201
 
