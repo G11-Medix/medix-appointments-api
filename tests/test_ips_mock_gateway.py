@@ -176,8 +176,9 @@ def test_gateway_maps_ips_mock_requests() -> None:
     gateway.find_patient_by_document(route, "CC", "123")
 
     assert client.calls[0]["path"] == "/fhir/PractitionerRole"
+    assert client.calls[0]["params"] is None
     assert client.calls[1]["path"] == "/fhir/Organization"
-    assert client.calls[2]["params"] == {"organization": "Organization/1", "specialty": 302}
+    assert client.calls[2]["params"] == {"specialty": 302}
     assert client.calls[3]["params"] == {"schedule": "Schedule/7", "start": "2026-04-10"}
     assert client.calls[4]["path"] == "/fhir/PractitionerRole"
     assert client.calls[5]["method"] == "POST"

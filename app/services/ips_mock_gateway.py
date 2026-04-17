@@ -45,7 +45,7 @@ class IpsMockGateway:
             method="GET",
             base_url=route.base_url,
             path="/fhir/PractitionerRole",
-            params={"organization": f"Organization/{route.id_institucion}"},
+            params=None,
             extra_headers=fhir_headers(),
         )
         specialties: dict[int, str] = {}
@@ -71,7 +71,7 @@ class IpsMockGateway:
         id_especialidad: int | None = None,
         access_token: str | None = None,
     ) -> list[dict[str, Any]]:
-        params: dict[str, Any] = {"organization": f"Organization/{route.id_institucion}"}
+        params: dict[str, Any] = {}
         if id_especialidad is not None:
             params["specialty"] = id_especialidad
         response = self._client().request(
