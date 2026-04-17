@@ -1,6 +1,6 @@
-from datetime import date, datetime, time
+from datetime import date, datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 
 class AssistantSpecialtyResponse(BaseModel):
@@ -32,45 +32,6 @@ class AssistantAvailabilityResponse(BaseModel):
     nombre_institucion: str
     codigo_reps: int
     disponibilidad: list[AssistantAvailabilityDay]
-
-
-class AssistantScheduleAppointmentRequest(BaseModel):
-    id_paciente: int
-    id_institucion: int
-    codigo_reps: int
-    fecha: date
-    hora: time
-
-
-class AssistantCancelAppointmentRequest(BaseModel):
-    id_institucion: int
-    motivo: str | None = Field(default=None, max_length=200)
-
-
-class AssistantRescheduleAppointmentRequest(BaseModel):
-    id_institucion: int
-    codigo_reps: int
-    nueva_fecha: date
-    nueva_hora: time
-
-
-class AssistantAppointmentResponse(BaseModel):
-    id: int
-    id_paciente: int
-    id_prestador: int
-    id_especialidad: int
-    fecha_hora_cupo: datetime
-    estado: str
-    motivo_cancelacion: str | None = None
-    fecha_creacion: datetime | None = None
-    fecha_actualizacion: datetime | None = None
-
-
-class AssistantAppointmentActionResponse(BaseModel):
-    mensaje: str
-    cita: AssistantAppointmentResponse
-
-
 class AssistantPatientResponse(BaseModel):
     id_paciente: int
     tipo_documento: str

@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime, time
 from types import SimpleNamespace
 
 import pytest
@@ -173,7 +173,8 @@ def test_create_cita_uses_institucion_route() -> None:
             tipo_documento="CC",
             numero_documento="123",
             id_prestador=2,
-            fecha_hora_cupo=datetime(2026, 4, 1, 8, 0, 0),
+            fecha=date(2026, 4, 1),
+            hora=time(8, 0, 0),
         ),
     )
 
@@ -183,6 +184,7 @@ def test_create_cita_uses_institucion_route() -> None:
     assert client.calls[2]["base_url"] == "http://localhost:4011"
     assert client.calls[2]["extra_headers"]["Accept"] == "application/fhir+json"
     assert client.calls[2]["path"] == "/fhir/Appointment"
+    assert client.calls[2]["payload"]["slot"][0]["reference"] == "Slot/2-2026-04-01T08:00:00"
 
 
 def test_update_delete_map_to_reprogramar_cancelar() -> None:
@@ -214,10 +216,12 @@ def test_list_citas_sends_query_params() -> None:
     desde = datetime(2026, 4, 1, 0, 0, 0)
     hasta = datetime(2026, 4, 30, 23, 59, 59)
 
-    service.list_citas(id_institucion=3, id_paciente=5, desde=desde, hasta=hasta)
+    service.list_citas(id_institucion=3, tipo_documento="CC", cedula="123", desde=desde, hasta=hasta)
 
-    assert client.calls[0]["path"] == "/fhir/Appointment"
-    assert client.calls[0]["params"] == {
+    assert client.calls[0]["path"] == "/fhir/Patient"
+    assert client.calls[0]["params"] == {"identifier": "urn:medix:document:cc|123"}
+    assert client.calls[1]["path"] == "/fhir/Appointment"
+    assert client.calls[1]["params"] == {
         "patient": "Patient/5",
         "date": "2026-04-01",
     }
@@ -278,6 +282,8 @@ def test_list_citas_app_by_paciente_doc_uses_fhir_patient_lookup() -> None:
     assert rows[0].id == 10
     assert rows[0].nombre_institucion == "IPS Demo"
     assert rows[0].especialidad == "Cardiologia"
+    assert rows[0].fecha.isoformat() == "2026-04-01"
+    assert rows[0].hora.isoformat() == "08:00:00"
     assert client.calls[0]["path"] == "/fhir/Patient"
     assert client.calls[0]["params"] == {"identifier": "urn:medix:document:cc|123"}
     assert client.calls[1]["path"] == "/fhir/Appointment"

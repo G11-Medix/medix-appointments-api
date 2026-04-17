@@ -1,6 +1,5 @@
-from datetime import date, datetime, time
+from datetime import date
 
-import pytest
 from fastapi import HTTPException
 
 from app.services.assistant_appointments_service import AssistantAppointmentsService
@@ -13,9 +12,6 @@ class FakeGateway:
             IpsRoute(id_institucion=1, base_url="http://ips-1"),
             IpsRoute(id_institucion=2, base_url="http://ips-2"),
         ]
-        self.create_calls: list[tuple[int, int, int, datetime]] = []
-        self.cancel_calls: list[tuple[int, int, str | None]] = []
-        self.reschedule_calls: list[tuple[int, int, datetime]] = []
 
     def list_routes(self) -> list[IpsRoute]:
         return self.routes
@@ -66,67 +62,6 @@ class FakeGateway:
             },
         ]
 
-    def create_appointment(
-        self,
-        route: IpsRoute,
-        id_paciente: int,
-        id_prestador: int,
-        fecha_hora_cupo: datetime,
-        access_token: str | None = None,
-    ) -> dict:
-        self.create_calls.append((route.id_institucion, id_paciente, id_prestador, fecha_hora_cupo))
-        return {
-            "id": 100,
-            "id_paciente": id_paciente,
-            "id_prestador": id_prestador,
-            "id_especialidad": 302,
-            "fecha_hora_cupo": fecha_hora_cupo.isoformat(),
-            "estado": "scheduled",
-            "motivo_cancelacion": None,
-            "fecha_creacion": "2026-04-01T08:00:00",
-            "fecha_actualizacion": "2026-04-01T08:00:00",
-        }
-
-    def cancel_appointment(
-        self,
-        route: IpsRoute,
-        id_cita: int,
-        motivo: str | None,
-        access_token: str | None = None,
-    ) -> dict:
-        self.cancel_calls.append((route.id_institucion, id_cita, motivo))
-        return {
-            "id": id_cita,
-            "id_paciente": 12,
-            "id_prestador": 5,
-            "id_especialidad": 302,
-            "fecha_hora_cupo": "2026-04-10T10:00:00",
-            "estado": "cancelled",
-            "motivo_cancelacion": motivo,
-            "fecha_creacion": "2026-04-01T08:00:00",
-            "fecha_actualizacion": "2026-04-01T09:00:00",
-        }
-
-    def reschedule_appointment(
-        self,
-        route: IpsRoute,
-        id_cita: int,
-        nueva_fecha_hora_cupo: datetime,
-        access_token: str | None = None,
-    ) -> dict:
-        self.reschedule_calls.append((route.id_institucion, id_cita, nueva_fecha_hora_cupo))
-        return {
-            "id": id_cita,
-            "id_paciente": 12,
-            "id_prestador": 4,
-            "id_especialidad": 302,
-            "fecha_hora_cupo": nueva_fecha_hora_cupo.isoformat(),
-            "estado": "scheduled",
-            "motivo_cancelacion": None,
-            "fecha_creacion": "2026-04-01T08:00:00",
-            "fecha_actualizacion": "2026-04-01T09:00:00",
-        }
-
     def find_patient_by_document(
         self,
         route: IpsRoute,
@@ -171,41 +106,7 @@ def test_get_disponibilidad_groups_and_filters() -> None:
     assert all(slot.hora == "10:00" for slot in response.disponibilidad[0].slots)
 
 
-def test_schedule_appointment_uses_deterministic_provider() -> None:
-    gateway = FakeGateway()
-    response = AssistantAppointmentsService(gateway=gateway).schedule_appointment(
-        id_paciente=12,
-        id_institucion=1,
-        codigo_reps=302,
-        fecha=date(2026, 4, 10),
-        hora=time(10, 0, 0),
-    )
+def test_find_patient_by_document_returns_first_match() -> None:
+    patient = AssistantAppointmentsService(gateway=FakeGateway()).find_patient_by_document("CC", "123")
 
-    assert gateway.create_calls[0][2] == 4
-    assert response.cita.estado == "RESERVADA"
-
-
-def test_schedule_appointment_fails_when_slot_missing() -> None:
-    with pytest.raises(HTTPException) as exc:
-        AssistantAppointmentsService(gateway=FakeGateway()).schedule_appointment(
-            id_paciente=12,
-            id_institucion=1,
-            codigo_reps=302,
-            fecha=date(2026, 4, 10),
-            hora=time(9, 0, 0),
-        )
-
-    assert exc.value.status_code == 404
-
-
-def test_cancel_reschedule_and_find_patient() -> None:
-    gateway = FakeGateway()
-    service = AssistantAppointmentsService(gateway=gateway)
-
-    cancelled = service.cancel_appointment(9, 1, "No puedo asistir")
-    rescheduled = service.reschedule_appointment(9, 1, 302, date(2026, 4, 10), time(10, 0, 0))
-    patient = service.find_patient_by_document("CC", "123")
-
-    assert cancelled.cita.estado == "CANCELADA"
-    assert rescheduled.cita.estado == "RESERVADA"
     assert patient.id_paciente == 12

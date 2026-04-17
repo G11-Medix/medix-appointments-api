@@ -130,6 +130,7 @@ def slot_to_legacy(resource: dict[str, Any]) -> dict[str, Any]:
 def appointment_to_legacy(resource: dict[str, Any]) -> dict[str, Any]:
     patient_id = None
     practitioner_id = None
+    practitioner_name = None
     for participant in resource.get("participant") or []:
         actor = participant.get("actor") or {}
         reference = actor.get("reference")
@@ -137,6 +138,7 @@ def appointment_to_legacy(resource: dict[str, Any]) -> dict[str, Any]:
             patient_id = int(resource_id(reference, "Patient"))
         if reference and reference.startswith("Practitioner/"):
             practitioner_id = int(resource_id(reference, "Practitioner"))
+            practitioner_name = str(actor.get("display") or "") or None
 
     specialty_id, _specialty_name = specialty_from_codeable_concepts(resource.get("specialty") or [])
     cancellation_reason = resource.get("cancelationReason") or {}
@@ -147,6 +149,7 @@ def appointment_to_legacy(resource: dict[str, Any]) -> dict[str, Any]:
         "id": int(resource["id"]),
         "id_paciente": int(patient_id or 0),
         "id_prestador": int(practitioner_id or 0),
+        "nombre_prestador": practitioner_name,
         "id_especialidad": int(specialty_id or 0),
         "fecha_hora_cupo": resource.get("start"),
         "estado": "scheduled" if status == "booked" else "cancelled",

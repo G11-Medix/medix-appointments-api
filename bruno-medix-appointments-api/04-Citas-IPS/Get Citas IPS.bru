@@ -5,7 +5,7 @@ meta {
 }
 
 get {
-  url: {{API_URL}}{{API_PREFIX}}/instituciones/{{ID_INSTITUCION}}/citas/?id_paciente={{ID_PACIENTE_IPS}}&desde={{FECHA_DESDE}}&hasta={{FECHA_HASTA}}
+  url: {{API_URL}}{{API_PREFIX}}/instituciones/{{ID_INSTITUCION}}/citas/?tipo_documento={{PACIENTE_TIPO_DOCUMENTO}}&cedula={{PACIENTE_NUMERO_DOCUMENTO}}&desde={{FECHA_DESDE}}&hasta={{FECHA_HASTA}}
   body: none
   auth: none
 }

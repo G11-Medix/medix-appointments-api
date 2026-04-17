@@ -7,7 +7,7 @@ from app.api.dependencies.auth import get_access_token_from_state
 from supabase import Client
 
 from app.db.supabase import get_supabase_client
-from app.schemas.cita import CitaAppResponse, CitaCreate, CitaDelete, CitaResponse, CitaUpdate
+from app.schemas.cita import CitaAppResponse, CitaConfirmacionResponse, CitaCreate, CitaDelete, CitaResponse, CitaUpdate
 from app.services.cita_service import CitaService
 
 router = APIRouter(prefix="/instituciones/{id_institucion}/citas", tags=["Citas"])
@@ -48,18 +48,37 @@ def get_cita(
     return CitaResponse.model_validate(row)
 
 
+@router.get("/{id_cita}/confirmacion", response_model=CitaConfirmacionResponse)
+def get_cita_confirmacion(
+    request: Request,
+    id_institucion: int,
+    id_cita: int,
+    service: Annotated[CitaService, Depends(get_cita_service)] = None,
+    supabase: Client = Depends(get_supabase_client),
+) -> CitaConfirmacionResponse:
+    row = service.get_cita_confirmacion(
+        supabase=supabase,
+        id_institucion=id_institucion,
+        id_cita=id_cita,
+        access_token=get_access_token_from_state(request),
+    )
+    return CitaConfirmacionResponse.model_validate(row)
+
+
 @router.get("/", response_model=list[CitaResponse])
 def list_citas(
     request: Request,
     id_institucion: int,
-    id_paciente: int | None = Query(default=None),
+    tipo_documento: str | None = Query(default=None, min_length=1),
+    cedula: str | None = Query(default=None, min_length=1),
     desde: datetime | None = Query(default=None),
     hasta: datetime | None = Query(default=None),
     service: Annotated[CitaService, Depends(get_cita_service)] = None,
 ) -> list[CitaResponse]:
     rows = service.list_citas(
         id_institucion=id_institucion,
-        id_paciente=id_paciente,
+        tipo_documento=tipo_documento,
+        cedula=cedula,
         desde=desde,
         hasta=hasta,
         access_token=get_access_token_from_state(request),
@@ -124,4 +143,3 @@ def get_all_citas_by_paciente(
         id_paciente=id_paciente,
         access_token=get_access_token_from_state(request),
     )
-

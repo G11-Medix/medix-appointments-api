@@ -1,4 +1,4 @@
-from datetime import date, time
+from datetime import date
 
 import pytest
 from fastapi import FastAPI
@@ -92,88 +92,6 @@ class FakeAssistantService:
             ],
         }
 
-    def schedule_appointment(
-        self,
-        id_paciente: int,
-        id_institucion: int,
-        codigo_reps: int,
-        fecha: date,
-        hora: time,
-        access_token: str | None = None,
-    ):
-        assert (id_paciente, id_institucion, codigo_reps, fecha, hora) == (
-            12,
-            1,
-            302,
-            date(2026, 4, 10),
-            time(10, 0, 0),
-        )
-        assert access_token == "ok-token"
-        return {
-            "mensaje": "Cita agendada correctamente",
-            "cita": {
-                "id": 100,
-                "id_paciente": 12,
-                "id_prestador": 5,
-                "id_especialidad": 1,
-                "fecha_hora_cupo": "2026-04-10T10:00:00",
-                "estado": "RESERVADA",
-                "motivo_cancelacion": None,
-                "fecha_creacion": "2026-04-01T08:00:00",
-                "fecha_actualizacion": "2026-04-01T08:00:00",
-            },
-        }
-
-    def cancel_appointment(self, id_cita: int, id_institucion: int, motivo: str | None, access_token: str | None = None):
-        assert (id_cita, id_institucion, motivo) == (100, 1, "No puedo asistir")
-        assert access_token == "ok-token"
-        return {
-            "mensaje": "Cita cancelada correctamente",
-            "cita": {
-                "id": 100,
-                "id_paciente": 12,
-                "id_prestador": 5,
-                "id_especialidad": 1,
-                "fecha_hora_cupo": "2026-04-10T10:00:00",
-                "estado": "CANCELADA",
-                "motivo_cancelacion": "No puedo asistir",
-                "fecha_creacion": "2026-04-01T08:00:00",
-                "fecha_actualizacion": "2026-04-01T08:00:00",
-            },
-        }
-
-    def reschedule_appointment(
-        self,
-        id_cita: int,
-        id_institucion: int,
-        codigo_reps: int,
-        nueva_fecha: date,
-        nueva_hora: time,
-        access_token: str | None = None,
-    ):
-        assert (id_cita, id_institucion, codigo_reps, nueva_fecha, nueva_hora) == (
-            100,
-            1,
-            302,
-            date(2026, 4, 11),
-            time(14, 0, 0),
-        )
-        assert access_token == "ok-token"
-        return {
-            "mensaje": "Cita reprogramada correctamente",
-            "cita": {
-                "id": 100,
-                "id_paciente": 12,
-                "id_prestador": 5,
-                "id_especialidad": 1,
-                "fecha_hora_cupo": "2026-04-11T14:00:00",
-                "estado": "RESERVADA",
-                "motivo_cancelacion": None,
-                "fecha_creacion": "2026-04-01T08:00:00",
-                "fecha_actualizacion": "2026-04-01T08:00:00",
-            },
-        }
-
     def find_patient_by_document(self, tipo_documento: str, numero_documento: str, access_token: str | None = None):
         assert (tipo_documento, numero_documento) == ("CC", "123")
         assert access_token == "ok-token"
@@ -226,43 +144,11 @@ def test_assistant_endpoints(client: TestClient) -> None:
         headers=headers,
         params={"tipo_documento": "CC", "numero_documento": "123"},
     )
-    scheduled = client.post(
-        "/api/citas/agendar",
-        headers=headers,
-        json={
-            "id_paciente": 12,
-            "id_institucion": 1,
-            "codigo_reps": 302,
-            "fecha": "2026-04-10",
-            "hora": "10:00:00",
-        },
-    )
-    cancelled = client.patch(
-        "/api/citas/100/cancelar",
-        headers=headers,
-        json={"id_institucion": 1, "motivo": "No puedo asistir"},
-    )
-    rescheduled = client.patch(
-        "/api/citas/100/reprogramar",
-        headers=headers,
-        json={
-            "id_institucion": 1,
-            "codigo_reps": 302,
-            "nueva_fecha": "2026-04-11",
-            "nueva_hora": "14:00:00",
-        },
-    )
-
     assert specialties.status_code == 200
     assert institutions.status_code == 200
     assert availability.status_code == 200
     assert patient.status_code == 200
-    assert scheduled.status_code == 201
-    assert cancelled.status_code == 200
-    assert rescheduled.status_code == 200
     assert specialties.json()[0] == {"id_especialidad": 1, "nombre": "Cardiologia", "codigo_reps": 302}
     assert institutions.json()[0]["estado"] == "ACTIVA"
     assert availability.json()["disponibilidad"][0]["slots"][0]["hora"] == "10:00"
     assert patient.json()["id_paciente"] == 12
-    assert scheduled.json()["cita"]["estado"] == "RESERVADA"
-    assert cancelled.json()["cita"]["estado"] == "CANCELADA"

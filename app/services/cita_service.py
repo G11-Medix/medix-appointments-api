@@ -48,7 +48,7 @@ class CitaService:
             route=route,
             id_paciente=int(patient["id_paciente"]),
             id_prestador=payload.id_prestador,
-            fecha_hora_cupo=payload.fecha_hora_cupo,
+            fecha_hora_cupo=datetime.combine(payload.fecha, payload.hora),
             id_especialidad=getattr(payload, "id_especialidad", None),
             access_token=access_token,
         )
@@ -57,16 +57,48 @@ class CitaService:
         route = self._resolve_route(id_institucion)
         return self._gateway().get_appointment(route=route, id_cita=id_cita, access_token=access_token)
 
+    def get_cita_confirmacion(
+        self,
+        supabase: Client,
+        id_institucion: int,
+        id_cita: int,
+        access_token: str | None = None,
+    ) -> dict[str, Any]:
+        cita = self.get_cita(id_institucion=id_institucion, id_cita=id_cita, access_token=access_token)
+        institucion = self.institucion_service.get_institucion(supabase=supabase, id_institucion=id_institucion)
+        if not institucion:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Institucion no encontrada")
+
+        return {
+            "doctor": str(cita.get("nombre_prestador") or f"Prestador {cita['id_prestador']}"),
+            "fecha": cita["fecha_hora_cupo"],
+            "institucion": institucion["nombre"],
+            "direccion": institucion.get("direccion"),
+            "latitud": institucion.get("latitud"),
+            "longitud": institucion.get("longitud"),
+            "estado": cita["estado"],
+        }
+
     def list_citas(
         self,
         id_institucion: int,
         *,
-        id_paciente: int | None = None,
+        tipo_documento: str | None = None,
+        cedula: str | None = None,
         desde: datetime | None = None,
         hasta: datetime | None = None,
         access_token: str | None = None,
     ) -> list[dict[str, Any]]:
         route = self._resolve_route(id_institucion)
+        id_paciente: int | None = None
+        if cedula is not None:
+            patient = self._gateway().find_patient_by_document(
+                route=route,
+                tipo_documento=tipo_documento or "CC",
+                numero_documento=cedula,
+                access_token=access_token,
+            )
+            id_paciente = int(patient["id_paciente"])
         response = self._gateway().list_appointments(
             route=route,
             id_paciente=id_paciente,
@@ -281,9 +313,31 @@ class CitaService:
         }
         especialidades = self.especialidad_service.list_especialidades(supabase)
         esp_map = {
-            esp["id_especialidad"]: esp["nombre"]
+            int(esp["codigo_reps"]): esp["nombre"]
             for esp in especialidades
+            if esp.get("codigo_reps") is not None
         }
+        esp_map.update({
+            int(esp["id_especialidad"]): esp["nombre"]
+            for esp in especialidades
+            if esp.get("id_especialidad") is not None
+        })
+
+        def _build_cita_app_response(row: dict[str, Any]) -> CitaAppResponse:
+            fecha_hora = datetime.fromisoformat(str(row["fecha_hora_cupo"]))
+            return CitaAppResponse(
+                id=row["id"],
+                nombre_institucion=inst_map.get(
+                    row.get("id_institucion"),
+                    "Institución desconocida",
+                ),
+                especialidad=esp_map.get(
+                    row.get("id_especialidad"),
+                    "Especialidad desconocida",
+                ),
+                fecha=fecha_hora.date(),
+                hora=fecha_hora.time(),
+            )
 
         paciente = self.paciente_service.get_paciente(supabase=supabase, id_paciente=id_paciente)
         if not paciente or not paciente.get("numero_documento") or not paciente.get("tipo_documento"):
@@ -294,18 +348,4 @@ class CitaService:
             numero_documento=paciente["numero_documento"],
             access_token=access_token,
         )
-        return [
-            CitaAppResponse(
-                id=row["id"],
-                nombre_institucion=inst_map.get(
-                    row.get("id_institucion"),
-                    "Institución desconocida",
-                ),
-                especialidad=esp_map.get(
-                    row.get("id_especialidad"),
-                    "Especialidad desconocida",
-                ),
-                fecha_hora_cupo=row["fecha_hora_cupo"],
-            )
-            for row in rows
-        ]
+        return [_build_cita_app_response(row) for row in rows]

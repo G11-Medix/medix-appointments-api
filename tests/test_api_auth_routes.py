@@ -61,6 +61,7 @@ def _build_cita_response(estado: str = "scheduled") -> dict:
         "id": 10,
         "id_paciente": 1,
         "id_prestador": 1,
+        "nombre_prestador": "Dr. Juan Perez",
         "id_especialidad": 1,
         "fecha_hora_cupo": "2026-04-01T08:00:00",
         "estado": estado,
@@ -95,6 +96,20 @@ def auth_client(monkeypatch: pytest.MonkeyPatch) -> tuple[TestClient, str, objec
                     "logo_url": "https://example.com/logo.png",
                 }
             ]
+
+        def get_institucion(self, supabase, id_institucion: int):  # noqa: ANN001
+            assert id_institucion == 1
+            return {
+                "id_institucion": 1,
+                "nombre": "Hospital Demo",
+                "nit": "900000000-1",
+                "direccion": "Calle 1",
+                "telefono": "3000000000",
+                "estado": "ACTIVO",
+                "longitud": -74.0721,
+                "latitud": 4.711,
+                "logo_url": "https://example.com/logo.png",
+            }
 
     class FakeEspecialidadService:
         def list_especialidades(self, supabase, limit: int = 50):  # noqa: ANN001
@@ -176,6 +191,21 @@ def auth_client(monkeypatch: pytest.MonkeyPatch) -> tuple[TestClient, str, objec
             assert id_cita == 10
             assert access_token == "ok-token"
             return _build_cita_response()
+
+        def get_cita_confirmacion(self, supabase, id_institucion: int, id_cita: int, access_token=None):  # noqa: ANN001
+            assert supabase is not None
+            assert id_institucion == 1
+            assert id_cita == 10
+            assert access_token == "ok-token"
+            return {
+                "doctor": "Dr. Juan Perez",
+                "fecha": "2026-04-01T08:00:00",
+                "institucion": "Hospital Demo",
+                "direccion": "Calle 1",
+                "latitud": 4.711,
+                "longitud": -74.0721,
+                "estado": "scheduled",
+            }
 
         def list_citas(self, id_institucion: int, *, id_paciente=None, desde=None, hasta=None, access_token=None):  # noqa: ANN001
             assert id_institucion == 1
