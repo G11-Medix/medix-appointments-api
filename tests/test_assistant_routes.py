@@ -50,11 +50,14 @@ class FakeSupabase:
         return FakeUsuarioQuery(self._users)
 
 
-class FakeAssistantService:
-    def list_specialties(self, access_token: str | None = None):
-        assert access_token == "ok-token"
-        return [{"id": 1, "nombre": "Cardiologia"}]
+class FakeEspecialidadService:
+    def list_especialidades(self, supabase, limit: int = 50):  # noqa: ANN001
+        assert limit == 50
+        assert supabase is not None
+        return [{"id_especialidad": 1, "nombre": "Cardiologia", "codigo_reps": 302}]
 
+
+class FakeAssistantService:
     def list_instituciones_by_especialidad(self, id_especialidad: int, access_token: str | None = None):
         assert id_especialidad == 1
         assert access_token == "ok-token"
@@ -200,6 +203,8 @@ def client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
     app = FastAPI()
     fake_service = FakeAssistantService()
     app.dependency_overrides[assistant_module.get_assistant_service] = lambda: fake_service
+    app.dependency_overrides[assistant_module.get_especialidad_service] = lambda: FakeEspecialidadService()
+    app.dependency_overrides[assistant_module.get_supabase_client] = lambda: object()
     app.dependency_overrides[institucion_module.get_assistant_service] = lambda: fake_service
     app.dependency_overrides[paciente_module.get_assistant_service] = lambda: fake_service
     app.include_router(api_router, prefix="/api")
@@ -255,7 +260,7 @@ def test_assistant_endpoints(client: TestClient) -> None:
     assert scheduled.status_code == 201
     assert cancelled.status_code == 200
     assert rescheduled.status_code == 200
-    assert specialties.json()[0]["nombre"] == "Cardiologia"
+    assert specialties.json()[0] == {"id_especialidad": 1, "nombre": "Cardiologia", "codigo_reps": 302}
     assert institutions.json()[0]["estado"] == "ACTIVA"
     assert availability.json()["disponibilidad"][0]["slots"][0]["hora"] == "10:00"
     assert patient.json()["id_paciente"] == 12

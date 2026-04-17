@@ -7,6 +7,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from app.api.dependencies import auth as auth_module
+from app.api.routes import assistant as assistant_module
 from app.api.routes.paciente import registration_router as paciente_registration_router
 from app.api.router import api_router
 from app.api.routes import cita as cita_module
@@ -89,8 +90,16 @@ def auth_client(monkeypatch: pytest.MonkeyPatch) -> tuple[TestClient, str, objec
                     "direccion": "Calle 1",
                     "telefono": "3000000000",
                     "estado": "ACTIVO",
+                    "longitud": -74.0721,
+                    "latitud": 4.711,
+                    "logo_url": "https://example.com/logo.png",
                 }
             ]
+
+    class FakeEspecialidadService:
+        def list_especialidades(self, supabase, limit: int = 50):  # noqa: ANN001
+            assert limit == 50
+            return [{"id_especialidad": 1, "nombre": "Cardiologia", "codigo_reps": 302}]
 
     class FakePacienteService:
         def __init__(self) -> None:
@@ -189,6 +198,8 @@ def auth_client(monkeypatch: pytest.MonkeyPatch) -> tuple[TestClient, str, objec
     fake_paciente_service = FakePacienteService()
 
     app = FastAPI()
+    app.dependency_overrides[assistant_module.get_especialidad_service] = lambda: FakeEspecialidadService()
+    app.dependency_overrides[assistant_module.get_supabase_client] = lambda: object()
     app.dependency_overrides[institucion_module.get_institucion_service] = lambda: FakeInstitucionService()
     app.dependency_overrides[institucion_module.get_supabase_client] = lambda: object()
     app.dependency_overrides[paciente_module.get_paciente_service] = lambda: fake_paciente_service
@@ -219,9 +230,27 @@ def test_api_accepts_valid_token_in_representative_endpoints(auth_client: tuple[
 
     institucion_resp = client.get("/api/instituciones/", headers=headers)
     cita_resp = client.get("/api/instituciones/1/citas/10", headers=headers)
+    especialidad_resp = client.get("/api/especialidades", headers=headers)
 
     assert institucion_resp.status_code == 200
     assert cita_resp.status_code == 200
+    assert especialidad_resp.status_code == 200
+    assert institucion_resp.json()[0] == {
+        "id_institucion": 1,
+        "nombre": "Hospital Demo",
+        "nit": "900000000-1",
+        "direccion": "Calle 1",
+        "telefono": "3000000000",
+        "estado": "ACTIVO",
+        "longitud": -74.0721,
+        "latitud": 4.711,
+        "logo_url": "https://example.com/logo.png",
+    }
+    assert especialidad_resp.json()[0] == {
+        "id_especialidad": 1,
+        "nombre": "Cardiologia",
+        "codigo_reps": 302,
+    }
 
 
 def test_paciente_create_forces_id_usuario_from_token(

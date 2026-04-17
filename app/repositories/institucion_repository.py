@@ -5,7 +5,7 @@ class InstitucionRepository:
     def list(self, supabase: Client, limit: int = 20) -> list[dict]:
         response = (
             supabase.table("Institucion")
-            .select("id_institucion,nombre,nit,direccion,telefono,estado")
+            .select("id_institucion,nombre,nit,direccion,telefono,estado,longitud,latitud,logo_url")
             .order("id_institucion")
             .limit(limit)
             .execute()

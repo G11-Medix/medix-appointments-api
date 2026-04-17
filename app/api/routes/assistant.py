@@ -1,16 +1,19 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Request
+from supabase import Client
 
 from app.api.dependencies.auth import get_access_token_from_state
+from app.db.supabase import get_supabase_client
 from app.schemas.assistant import (
     AssistantAppointmentActionResponse,
     AssistantCancelAppointmentRequest,
     AssistantRescheduleAppointmentRequest,
     AssistantScheduleAppointmentRequest,
-    AssistantSpecialtyResponse,
 )
+from app.schemas.especialidad import EspecialidadResponse
 from app.services.assistant_appointments_service import AssistantAppointmentsService
+from app.services.especialidad_service import EspecialidadService
 
 router = APIRouter(tags=["Assistant"])
 
@@ -19,12 +22,17 @@ def get_assistant_service() -> AssistantAppointmentsService:
     return AssistantAppointmentsService()
 
 
-@router.get("/especialidades", response_model=list[AssistantSpecialtyResponse])
+def get_especialidad_service() -> EspecialidadService:
+    return EspecialidadService()
+
+
+@router.get("/especialidades", response_model=list[EspecialidadResponse])
 def list_specialties(
-    request: Request,
-    service: Annotated[AssistantAppointmentsService, Depends(get_assistant_service)] = None,
-) -> list[AssistantSpecialtyResponse]:
-    return service.list_specialties(access_token=get_access_token_from_state(request))
+    service: Annotated[EspecialidadService, Depends(get_especialidad_service)] = None,
+    supabase: Client = Depends(get_supabase_client),
+) -> list[EspecialidadResponse]:
+    rows = service.list_especialidades(supabase=supabase)
+    return [EspecialidadResponse.model_validate(row) for row in rows]
 
 
 @router.post("/citas/agendar", response_model=AssistantAppointmentActionResponse, status_code=201)

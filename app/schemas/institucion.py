@@ -8,5 +8,8 @@ class InstitucionResponse(BaseModel):
     direccion: str | None = None
     telefono: str | None = None
     estado: str
+    longitud: float | None = None
+    latitud: float | None = None
+    logo_url: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
