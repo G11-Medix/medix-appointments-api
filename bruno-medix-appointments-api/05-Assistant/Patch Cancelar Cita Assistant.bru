@@ -1,5 +1,5 @@
 meta {
-  name: Patch Cancelar Cita Assistant
+  name: [IPS-MOCK] Patch Cancelar Cita Assistant
   type: http
   seq: 18
 }
@@ -12,6 +12,10 @@ patch {
 
 headers {
   Authorization: Bearer {{ACCESS_TOKEN}}
+}
+
+docs {
+  [IPS-MOCK] Este endpoint cancela la cita a través de la IPS mock configurada para la institución.
 }
 
 body:json {

@@ -1,5 +1,5 @@
 meta {
-  name: Post Agendar Cita Assistant
+  name: [IPS-MOCK] Post Agendar Cita Assistant
   type: http
   seq: 17
 }
@@ -12,6 +12,10 @@ post {
 
 headers {
   Authorization: Bearer {{ACCESS_TOKEN}}
+}
+
+docs {
+  [IPS-MOCK] Este endpoint agenda la cita a través de la IPS mock configurada para la institución.
 }
 
 body:json {

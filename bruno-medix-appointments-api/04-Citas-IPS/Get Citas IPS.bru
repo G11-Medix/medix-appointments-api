@@ -1,5 +1,5 @@
 meta {
-  name: Get Citas IPS
+  name: [IPS-MOCK] Get Citas IPS
   type: http
   seq: 8
 }
@@ -12,4 +12,8 @@ get {
 
 headers {
   Authorization: Bearer {{ACCESS_TOKEN}}
+}
+
+docs {
+  [IPS-MOCK] Este endpoint lista citas desde la IPS mock configurada para la institución.
 }

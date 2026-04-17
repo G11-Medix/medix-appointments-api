@@ -1,5 +1,5 @@
 meta {
-  name: Get Buscar Paciente
+  name: [IPS-MOCK] Get Buscar Paciente
   type: http
   seq: 20
 }
@@ -12,4 +12,8 @@ get {
 
 headers {
   Authorization: Bearer {{ACCESS_TOKEN}}
+}
+
+docs {
+  [IPS-MOCK] Este endpoint consulta pacientes en las IPS configuradas mediante `ips-mock-service`, no en la tabla local `Paciente`.
 }

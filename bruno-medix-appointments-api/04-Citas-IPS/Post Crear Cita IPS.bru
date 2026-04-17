@@ -1,5 +1,5 @@
 meta {
-  name: Post Crear Cita IPS
+  name: [IPS-MOCK] Post Crear Cita IPS
   type: http
   seq: 7
 }
@@ -12,6 +12,10 @@ post {
 
 headers {
   Authorization: Bearer {{ACCESS_TOKEN}}
+}
+
+docs {
+  [IPS-MOCK] Este endpoint crea la cita en la IPS mock configurada para la institución.
 }
 
 body:json {
