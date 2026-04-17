@@ -210,21 +210,30 @@ def test_update_delete_map_to_reprogramar_cancelar() -> None:
     assert client.calls[2]["method"] == "PATCH"
 
 
-def test_list_citas_sends_query_params() -> None:
+def test_list_citas_filters_by_range_without_sending_exact_date() -> None:
     client = DummyIpsClient()
     service = build_service('{"3":{"base_url":"http://localhost:4013","api_key":"ips-cpc-key"}}', client)
     desde = datetime(2026, 4, 1, 0, 0, 0)
     hasta = datetime(2026, 4, 30, 23, 59, 59)
 
-    service.list_citas(id_institucion=3, tipo_documento="CC", cedula="123", desde=desde, hasta=hasta)
+    rows = service.list_citas(id_institucion=3, tipo_documento="CC", cedula="123", desde=desde, hasta=hasta)
 
     assert client.calls[0]["path"] == "/fhir/Patient"
     assert client.calls[0]["params"] == {"identifier": "urn:medix:document:cc|123"}
     assert client.calls[1]["path"] == "/fhir/Appointment"
-    assert client.calls[1]["params"] == {
-        "patient": "Patient/5",
-        "date": "2026-04-01",
-    }
+    assert client.calls[1]["params"] == {"patient": "Patient/5"}
+    assert len(rows) == 1
+
+
+def test_list_citas_returns_empty_when_outside_requested_range() -> None:
+    client = DummyIpsClient()
+    service = build_service('{"3":{"base_url":"http://localhost:4013","api_key":"ips-cpc-key"}}', client)
+    desde = datetime(2026, 4, 2, 0, 0, 0)
+    hasta = datetime(2026, 4, 30, 23, 59, 59)
+
+    rows = service.list_citas(id_institucion=3, tipo_documento="CC", cedula="123", desde=desde, hasta=hasta)
+
+    assert rows == []
 
 
 def test_missing_route_returns_404() -> None:

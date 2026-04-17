@@ -102,12 +102,15 @@ class CitaService:
         response = self._gateway().list_appointments(
             route=route,
             id_paciente=id_paciente,
-            desde=desde,
             access_token=access_token,
         )
-        if hasta is not None:
-            return [row for row in response if datetime.fromisoformat(str(row["fecha_hora_cupo"])) <= hasta]
-        return response if isinstance(response, list) else []
+        rows = response if isinstance(response, list) else []
+        if desde is None and hasta is None:
+            return rows
+        return [
+            row for row in rows
+            if self._appointment_in_range(row, desde=desde, hasta=hasta)
+        ]
 
     def list_all_citas_by_paciente(
         self,
@@ -238,6 +241,20 @@ class CitaService:
             settings=self._settings(),
             route_resolver=self.route_resolver,
         )
+
+    @staticmethod
+    def _appointment_in_range(
+        row: dict[str, Any],
+        *,
+        desde: datetime | None,
+        hasta: datetime | None,
+    ) -> bool:
+        fecha_hora = datetime.fromisoformat(str(row["fecha_hora_cupo"]))
+        if desde is not None and fecha_hora < desde:
+            return False
+        if hasta is not None and fecha_hora > hasta:
+            return False
+        return True
     
     def list_all_citas_by_paciente_doc(
         self,
