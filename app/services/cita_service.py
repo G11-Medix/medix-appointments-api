@@ -156,10 +156,7 @@ class CitaService:
         access_token: str | None = None,
     ) -> list[CitaAppResponse]:
         instituciones = self.institucion_service.list_instituciones(supabase)
-        inst_map = {
-            inst["id_institucion"]: inst["nombre"]
-            for inst in instituciones
-        }
+        inst_map = _build_institucion_map(instituciones)
         especialidades = self.especialidad_service.list_especialidades(supabase)
         esp_map = {
             int(esp["codigo_reps"]): esp["nombre"]
@@ -176,14 +173,14 @@ class CitaService:
             id_paciente=id_paciente,
             access_token=access_token,
         )
-        return [
-            CitaAppResponse(
+
+        def _build_cita_app_response(row: dict[str, Any]) -> CitaAppResponse:
+            institucion = _get_institucion(row, inst_map)
+            return CitaAppResponse(
                 id=row["id"],
                 id_institucion=int(row["id_institucion"]),
-                nombre_institucion=inst_map.get(
-                    row.get("id_institucion"),
-                    "Institución desconocida",
-                ),
+                nombre_institucion=institucion.get("nombre", "Institución desconocida"),
+                logo_url=institucion.get("logo_url"),
                 especialidad=esp_map.get(
                     row.get("id_especialidad"),
                     "Especialidad desconocida",
@@ -191,6 +188,9 @@ class CitaService:
                 estado=row["estado"],
                 fecha_hora_cupo=row["fecha_hora_cupo"],
             )
+
+        return [
+            _build_cita_app_response(row)
             for row in rows
         ]
 
@@ -326,10 +326,7 @@ class CitaService:
         access_token: str | None = None,
     ) -> list[CitaAppResponse]:
         instituciones = self.institucion_service.list_instituciones(supabase)
-        inst_map = {
-            inst["id_institucion"]: inst["nombre"]
-            for inst in instituciones
-        }
+        inst_map = _build_institucion_map(instituciones)
         especialidades = self.especialidad_service.list_especialidades(supabase)
         esp_map = {
             int(esp["codigo_reps"]): esp["nombre"]
@@ -344,13 +341,12 @@ class CitaService:
 
         def _build_cita_app_response(row: dict[str, Any]) -> CitaAppResponse:
             fecha_hora = _parse_optional_datetime(row.get("fecha_hora_cupo"))
+            institucion = _get_institucion(row, inst_map)
             return CitaAppResponse(
                 id=row["id"],
                 id_institucion=int(row["id_institucion"]),
-                nombre_institucion=inst_map.get(
-                    row.get("id_institucion"),
-                    "Institución desconocida",
-                ),
+                nombre_institucion=institucion.get("nombre", "Institución desconocida"),
+                logo_url=institucion.get("logo_url"),
                 especialidad=esp_map.get(
                     row.get("id_especialidad"),
                     "Especialidad desconocida",
@@ -370,6 +366,21 @@ class CitaService:
             access_token=access_token,
         )
         return [_build_cita_app_response(row) for row in rows]
+
+
+def _build_institucion_map(instituciones: list[dict[str, Any]]) -> dict[int, dict[str, Any]]:
+    return {
+        int(inst["id_institucion"]): inst
+        for inst in instituciones
+        if inst.get("id_institucion") is not None
+    }
+
+
+def _get_institucion(row: dict[str, Any], inst_map: dict[int, dict[str, Any]]) -> dict[str, Any]:
+    id_institucion = row.get("id_institucion")
+    if id_institucion is None:
+        return {}
+    return inst_map.get(int(id_institucion), {})
 
 
 def _parse_optional_datetime(value: Any) -> datetime | None:

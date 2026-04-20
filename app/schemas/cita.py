@@ -45,6 +45,7 @@ class CitaAppResponse(BaseModel):
     id: int
     id_institucion: int
     nombre_institucion: str = Field(serialization_alias="nombre_ins")
+    logo_url: str | None = None
     especialidad: str
     estado: str
     fecha: date | None = None

@@ -344,7 +344,7 @@ def test_list_citas_app_by_paciente_doc_uses_fhir_patient_lookup() -> None:
 
     class FakeInstitucionService:
         def list_instituciones(self, supabase):  # noqa: ANN001
-            return [{"id_institucion": 3, "nombre": "IPS Demo"}]
+            return [{"id_institucion": 3, "nombre": "IPS Demo", "logo_url": "https://example.com/ips-demo.png"}]
 
     class FakeEspecialidadService:
         def list_especialidades(self, supabase):  # noqa: ANN001
@@ -376,6 +376,7 @@ def test_list_citas_app_by_paciente_doc_uses_fhir_patient_lookup() -> None:
     assert rows[0].id == 10
     assert rows[0].id_institucion == 3
     assert rows[0].nombre_institucion == "IPS Demo"
+    assert rows[0].logo_url == "https://example.com/ips-demo.png"
     assert rows[0].especialidad == "Cardiologia"
     assert rows[0].estado == "scheduled"
     assert rows[0].fecha.isoformat() == "2026-04-01"
