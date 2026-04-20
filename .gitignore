@@ -1,5 +1,6 @@
 # Seguridad
 .env
+bruno-medix-appointments-api/.env
 
 # Python (Compilados y caché)
 __pycache__/

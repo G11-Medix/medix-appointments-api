@@ -1,0 +1,19 @@
+meta {
+  name: [IPS-MOCK] Get Citas Paciente
+  type: http
+  seq: 22
+}
+
+get {
+  url: {{API_URL}}{{API_PREFIX}}/pacientes/{{ID_PACIENTE}}/citas
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{ACCESS_TOKEN}}
+}
+
+docs {
+  [IPS-MOCK] Este endpoint agrega citas consultando las IPS configuradas mediante `ips-mock-service`.
+}

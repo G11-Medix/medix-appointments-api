@@ -1,0 +1,29 @@
+meta {
+  name: [IPS-MOCK] Post Crear Cita IPS
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{API_URL}}{{API_PREFIX}}/instituciones/{{ID_INSTITUCION}}/citas/
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{ACCESS_TOKEN}}
+}
+
+docs {
+  [IPS-MOCK] Este endpoint crea la cita en la IPS mock configurada para la institución.
+}
+
+body:json {
+  {
+    "tipo_documento": "{{PACIENTE_TIPO_DOCUMENTO}}",
+    "numero_documento": "{{PACIENTE_NUMERO_DOCUMENTO}}",
+    "id_prestador": {{ID_PRESTADOR}},
+    "fecha": "{{FECHA_DISPONIBILIDAD}}",
+    "hora": "{{HORA_CITA_ASSISTANT}}"
+  }
+}

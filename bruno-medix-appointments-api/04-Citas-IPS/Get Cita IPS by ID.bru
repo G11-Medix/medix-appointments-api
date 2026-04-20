@@ -1,0 +1,19 @@
+meta {
+  name: [IPS-MOCK] Get Cita IPS by ID
+  type: http
+  seq: 9
+}
+
+get {
+  url: {{API_URL}}{{API_PREFIX}}/instituciones/{{ID_INSTITUCION}}/citas/{{ID_CITA}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{ACCESS_TOKEN}}
+}
+
+docs {
+  [IPS-MOCK] Este endpoint consulta el detalle de la cita en la IPS mock configurada para la institución.
+}

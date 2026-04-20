@@ -1,0 +1,25 @@
+meta {
+  name: [IPS-MOCK] Delete Cancelar Cita IPS
+  type: http
+  seq: 11
+}
+
+delete {
+  url: {{API_URL}}{{API_PREFIX}}/instituciones/{{ID_INSTITUCION}}/citas/{{ID_CITA}}
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{ACCESS_TOKEN}}
+}
+
+docs {
+  [IPS-MOCK] Este endpoint reenvía la cancelación a la IPS mock configurada para la institución.
+}
+
+body:json {
+  {
+    "motivo": "{{MOTIVO_CANCELACION}}"
+  }
+}

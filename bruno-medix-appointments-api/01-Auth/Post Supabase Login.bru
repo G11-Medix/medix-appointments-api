@@ -1,0 +1,47 @@
+meta {
+  name: Post Supabase Login
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{SUPABASE_URL}}/auth/v1/token?grant_type=password
+  body: json
+  auth: none
+}
+
+headers {
+  apikey: {{SUPABASE_ANON_KEY}}
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "email": "{{SUPABASE_TEST_EMAIL}}",
+    "password": "{{SUPABASE_TEST_PASSWORD}}"
+  }
+}
+
+script:post-response {
+  const data = res.getBody();
+
+  if (data?.access_token) {
+    bru.setVar("ACCESS_TOKEN", data.access_token);
+  }
+
+  if (data?.refresh_token) {
+    bru.setVar("REFRESH_TOKEN", data.refresh_token);
+  }
+}
+
+docs {
+  Ejecuta este request con un usuario creado en Supabase Auth.
+
+  El response incluye `access_token` y `refresh_token`.
+
+  Este request guarda automaticamente `ACCESS_TOKEN` y `REFRESH_TOKEN` como runtime variables de la coleccion.
+
+  Usa `access_token` en Bruno o cualquier cliente HTTP:
+
+  `Authorization: Bearer <access_token>`
+}

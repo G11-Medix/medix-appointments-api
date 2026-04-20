@@ -1,0 +1,15 @@
+meta {
+  name: Get Paciente by ID
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{API_URL}}{{API_PREFIX}}/pacientes/{{ID_PACIENTE}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{ACCESS_TOKEN}}
+}
