@@ -5,9 +5,14 @@ meta {
 }
 
 get {
-  url: {{API_URL}}{{API_PREFIX}}/instituciones/?codigo_reps={{CODIGO_REPS}}
+  url: {{API_URL}}{{API_PREFIX}}/instituciones/?codigo_reps={{CODIGO_REPS}}&id_paciente={{ID_PACIENTE}}
   body: none
   auth: none
+}
+
+params:query {
+  codigo_reps: {{CODIGO_REPS}}
+  id_paciente: {{ID_PACIENTE}}
 }
 
 headers {

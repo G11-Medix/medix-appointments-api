@@ -61,7 +61,10 @@ class FakeAssistantService:
     def list_instituciones_by_especialidad(self, codigo_reps: int, access_token: str | None = None):
         assert codigo_reps == 302
         assert access_token == "ok-token"
-        return [{"id_institucion": 1, "nombre": "IPS Demo", "estado": "ACTIVA", "especialidades": [302]}]
+        return [
+            {"id_institucion": 1, "nombre": "IPS Demo", "estado": "ACTIVA", "especialidades": [302]},
+            {"id_institucion": 2, "nombre": "IPS Aliada", "estado": "ACTIVA", "especialidades": [302]},
+        ]
 
     def get_disponibilidad(
         self,
@@ -109,6 +112,21 @@ class FakeAssistantService:
         }
 
 
+class FakePacienteService:
+    def get_paciente(self, supabase, id_paciente: int):  # noqa: ANN001
+        assert supabase is not None
+        if id_paciente == 404:
+            return None
+        return {"id_paciente": id_paciente, "id_eps": 7}
+
+
+class FakeEpsService:
+    def list_related_ips(self, supabase, id_eps: int):  # noqa: ANN001
+        assert supabase is not None
+        assert id_eps == 7
+        return [{"id_institucion": 2}]
+
+
 @pytest.fixture
 def client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
     user_id = "11111111-1111-1111-1111-111111111111"
@@ -124,6 +142,9 @@ def client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
     app.dependency_overrides[assistant_module.get_especialidad_service] = lambda: FakeEspecialidadService()
     app.dependency_overrides[assistant_module.get_supabase_client] = lambda: object()
     app.dependency_overrides[institucion_module.get_assistant_service] = lambda: fake_service
+    app.dependency_overrides[institucion_module.get_paciente_service] = lambda: FakePacienteService()
+    app.dependency_overrides[institucion_module.get_eps_service] = lambda: FakeEpsService()
+    app.dependency_overrides[institucion_module.get_supabase_client] = lambda: object()
     app.dependency_overrides[paciente_module.get_assistant_service] = lambda: fake_service
     app.include_router(api_router, prefix="/api")
     return TestClient(app)
@@ -152,3 +173,27 @@ def test_assistant_endpoints(client: TestClient) -> None:
     assert institutions.json()[0]["estado"] == "ACTIVA"
     assert availability.json()["disponibilidad"][0]["slots"][0]["hora"] == "10:00"
     assert patient.json()["id_paciente"] == 12
+
+
+def test_instituciones_by_especialidad_filters_by_patient_eps(client: TestClient) -> None:
+    response = client.get(
+        "/api/instituciones",
+        headers={"Authorization": "Bearer ok-token"},
+        params={"codigo_reps": 302, "id_paciente": 5},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == [
+        {"id_institucion": 2, "nombre": "IPS Aliada", "estado": "ACTIVA", "especialidades": [302]}
+    ]
+
+
+def test_instituciones_by_especialidad_returns_404_when_patient_missing(client: TestClient) -> None:
+    response = client.get(
+        "/api/instituciones",
+        headers={"Authorization": "Bearer ok-token"},
+        params={"codigo_reps": 302, "id_paciente": 404},
+    )
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Paciente no encontrado"}
