@@ -43,9 +43,11 @@ class CitaConfirmacionResponse(BaseModel):
 
 class CitaAppResponse(BaseModel):
     id: int
+    id_institucion: int
     nombre_institucion: str = Field(serialization_alias="nombre_ins")
     especialidad: str
-    fecha: date
-    hora: time
+    estado: str
+    fecha: date | None = None
+    hora: time | None = None
 
     model_config = ConfigDict(populate_by_name=True)

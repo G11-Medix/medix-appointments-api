@@ -152,7 +152,7 @@ def appointment_to_legacy(resource: dict[str, Any]) -> dict[str, Any]:
         "nombre_prestador": practitioner_name,
         "id_especialidad": int(specialty_id or 0),
         "fecha_hora_cupo": resource.get("start"),
-        "estado": "scheduled" if status == "booked" else "cancelled",
+        "estado": "scheduled" if status == "booked" else status,
         "motivo_cancelacion": cancellation_reason.get("text"),
         "fecha_creacion": created_at,
         "fecha_actualizacion": updated_at,

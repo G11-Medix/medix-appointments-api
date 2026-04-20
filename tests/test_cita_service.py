@@ -69,38 +69,123 @@ class DummyIpsClient:
                 }
             return {"resourceType": "Bundle", "type": "searchset", "entry": []}
         if path == "/fhir/Appointment" and kwargs["method"] == "GET":
+            entries = [
+                {
+                    "resource": {
+                        "resourceType": "Appointment",
+                        "id": "10",
+                        "status": "booked",
+                        "specialty": [
+                            {
+                                "coding": [
+                                    {
+                                        "system": "urn:medix:specialty",
+                                        "code": "302",
+                                        "display": "Cardiologia",
+                                    }
+                                ],
+                                "text": "Cardiologia",
+                            }
+                        ],
+                        "participant": [
+                            {"actor": {"reference": "Patient/5"}, "status": "accepted"},
+                            {"actor": {"reference": "Practitioner/2"}, "status": "accepted"},
+                        ],
+                        "created": "2026-03-31T10:00:00",
+                        "meta": {"lastUpdated": "2026-03-31T10:00:00"},
+                        "start": "2026-04-01T08:00:00",
+                        "end": "2026-04-01T08:30:00",
+                    }
+                }
+            ]
+            if (kwargs.get("extra_headers") or {}).get("Authorization"):
+                entries.extend(
+                    [
+                        {
+                            "resource": {
+                                "resourceType": "Appointment",
+                                "id": "11",
+                                "status": "cancelled",
+                                "specialty": [
+                                    {
+                                        "coding": [
+                                            {
+                                                "system": "urn:medix:specialty",
+                                                "code": "302",
+                                                "display": "Cardiologia",
+                                            }
+                                        ],
+                                        "text": "Cardiologia",
+                                    }
+                                ],
+                                "participant": [
+                                    {"actor": {"reference": "Patient/5"}, "status": "accepted"},
+                                    {"actor": {"reference": "Practitioner/2"}, "status": "accepted"},
+                                ],
+                                "created": "2026-03-31T10:00:00",
+                                "meta": {"lastUpdated": "2026-03-31T10:00:00"},
+                                "start": "2026-04-02T09:00:00",
+                                "end": "2026-04-02T09:30:00",
+                            }
+                        },
+                        {
+                            "resource": {
+                                "resourceType": "Appointment",
+                                "id": "12",
+                                "status": "fulfilled",
+                                "specialty": [
+                                    {
+                                        "coding": [
+                                            {
+                                                "system": "urn:medix:specialty",
+                                                "code": "302",
+                                                "display": "Cardiologia",
+                                            }
+                                        ],
+                                        "text": "Cardiologia",
+                                    }
+                                ],
+                                "participant": [
+                                    {"actor": {"reference": "Patient/5"}, "status": "accepted"},
+                                    {"actor": {"reference": "Practitioner/2"}, "status": "accepted"},
+                                ],
+                                "created": "2026-03-31T10:00:00",
+                                "meta": {"lastUpdated": "2026-03-31T10:00:00"},
+                                "start": "2026-04-03T10:00:00",
+                                "end": "2026-04-03T10:30:00",
+                            }
+                        },
+                        {
+                            "resource": {
+                                "resourceType": "Appointment",
+                                "id": "13",
+                                "status": "waitlist",
+                                "specialty": [
+                                    {
+                                        "coding": [
+                                            {
+                                                "system": "urn:medix:specialty",
+                                                "code": "302",
+                                                "display": "Cardiologia",
+                                            }
+                                        ],
+                                        "text": "Cardiologia",
+                                    }
+                                ],
+                                "participant": [
+                                    {"actor": {"reference": "Patient/5"}, "status": "accepted"},
+                                    {"actor": {"reference": "Practitioner/2"}, "status": "accepted"},
+                                ],
+                                "created": "2026-03-31T10:00:00",
+                                "meta": {"lastUpdated": "2026-03-31T10:00:00"},
+                            }
+                        },
+                    ]
+                )
             return {
                 "resourceType": "Bundle",
                 "type": "searchset",
-                "entry": [
-                    {
-                        "resource": {
-                            "resourceType": "Appointment",
-                            "id": "10",
-                            "status": "booked",
-                            "specialty": [
-                                {
-                                    "coding": [
-                                        {
-                                            "system": "urn:medix:specialty",
-                                            "code": "302",
-                                            "display": "Cardiologia",
-                                        }
-                                    ],
-                                    "text": "Cardiologia",
-                                }
-                            ],
-                            "participant": [
-                                {"actor": {"reference": "Patient/5"}, "status": "accepted"},
-                                {"actor": {"reference": "Practitioner/2"}, "status": "accepted"},
-                            ],
-                            "created": "2026-03-31T10:00:00",
-                            "meta": {"lastUpdated": "2026-03-31T10:00:00"},
-                            "start": "2026-04-01T08:00:00",
-                            "end": "2026-04-01T08:30:00",
-                        }
-                    }
-                ],
+                "entry": entries,
             }
         if path == "/fhir/Appointment" and kwargs["method"] == "POST":
             return {
@@ -287,12 +372,22 @@ def test_list_citas_app_by_paciente_doc_uses_fhir_patient_lookup() -> None:
         access_token="ok-token",
     )
 
-    assert len(rows) == 1
+    assert len(rows) == 4
     assert rows[0].id == 10
+    assert rows[0].id_institucion == 3
     assert rows[0].nombre_institucion == "IPS Demo"
     assert rows[0].especialidad == "Cardiologia"
+    assert rows[0].estado == "scheduled"
     assert rows[0].fecha.isoformat() == "2026-04-01"
     assert rows[0].hora.isoformat() == "08:00:00"
+    assert rows[1].id == 11
+    assert rows[1].estado == "cancelled"
+    assert rows[2].id == 12
+    assert rows[2].estado == "fulfilled"
+    assert rows[3].id == 13
+    assert rows[3].estado == "waitlist"
+    assert rows[3].fecha is None
+    assert rows[3].hora is None
     assert client.calls[0]["path"] == "/fhir/Patient"
     assert client.calls[0]["params"] == {"identifier": "urn:medix:document:cc|123"}
     assert client.calls[1]["path"] == "/fhir/Appointment"

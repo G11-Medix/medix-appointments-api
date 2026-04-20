@@ -179,6 +179,7 @@ class CitaService:
         return [
             CitaAppResponse(
                 id=row["id"],
+                id_institucion=int(row["id_institucion"]),
                 nombre_institucion=inst_map.get(
                     row.get("id_institucion"),
                     "Institución desconocida",
@@ -187,6 +188,7 @@ class CitaService:
                     row.get("id_especialidad"),
                     "Especialidad desconocida",
                 ),
+                estado=row["estado"],
                 fecha_hora_cupo=row["fecha_hora_cupo"],
             )
             for row in rows
@@ -341,9 +343,10 @@ class CitaService:
         })
 
         def _build_cita_app_response(row: dict[str, Any]) -> CitaAppResponse:
-            fecha_hora = datetime.fromisoformat(str(row["fecha_hora_cupo"]))
+            fecha_hora = _parse_optional_datetime(row.get("fecha_hora_cupo"))
             return CitaAppResponse(
                 id=row["id"],
+                id_institucion=int(row["id_institucion"]),
                 nombre_institucion=inst_map.get(
                     row.get("id_institucion"),
                     "Institución desconocida",
@@ -352,8 +355,9 @@ class CitaService:
                     row.get("id_especialidad"),
                     "Especialidad desconocida",
                 ),
-                fecha=fecha_hora.date(),
-                hora=fecha_hora.time(),
+                estado=row["estado"],
+                fecha=fecha_hora.date() if fecha_hora else None,
+                hora=fecha_hora.time() if fecha_hora else None,
             )
 
         paciente = self.paciente_service.get_paciente(supabase=supabase, id_paciente=id_paciente)
@@ -366,3 +370,14 @@ class CitaService:
             access_token=access_token,
         )
         return [_build_cita_app_response(row) for row in rows]
+
+
+def _parse_optional_datetime(value: Any) -> datetime | None:
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return value
+    value_str = str(value).strip()
+    if not value_str:
+        return None
+    return datetime.fromisoformat(value_str)

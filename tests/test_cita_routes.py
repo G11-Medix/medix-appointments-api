@@ -89,8 +89,10 @@ def client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
             return [
                 {
                     "id": 10,
+                    "id_institucion": 1,
                     "nombre_institucion": "Clinica Central",
                     "especialidad": "Medicina general",
+                    "estado": "scheduled",
                     "fecha": "2026-04-01",
                     "hora": "08:00:00",
                 }
@@ -181,8 +183,10 @@ def test_patient_citas_route_passes_access_token(client: TestClient) -> None:
     assert response.json() == [
         {
             "id": 10,
+            "id_institucion": 1,
             "nombre_ins": "Clinica Central",
             "especialidad": "Medicina general",
+            "estado": "scheduled",
             "fecha": "2026-04-01",
             "hora": "08:00:00",
         }
