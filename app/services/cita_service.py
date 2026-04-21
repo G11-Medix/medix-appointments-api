@@ -338,6 +338,7 @@ class CitaService:
             id=int(row["id"]),
             nombre_paciente=_patient_full_name(patient),
             cedula_paciente=str(patient.get("numero_documento") or ""),
+            id_prestador=int(row.get("id_prestador") or 0),
             nombre_prestador=row.get("nombre_prestador"),
             especialidad=str(specialty_name or "Especialidad desconocida"),
             fecha=fecha_hora.date(),

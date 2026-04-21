@@ -36,6 +36,7 @@ class CitaIpsResponse(BaseModel):
     id: int
     nombre_paciente: str
     cedula_paciente: str
+    id_prestador: int
     nombre_prestador: str | None = None
     especialidad: str
     fecha: date

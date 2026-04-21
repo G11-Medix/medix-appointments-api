@@ -76,6 +76,7 @@ def _build_cita_ips_response(estado: str = "scheduled") -> dict:
         "id": 10,
         "nombre_paciente": "Ana Perez",
         "cedula_paciente": "123",
+        "id_prestador": 1,
         "nombre_prestador": "Dr. Juan Perez",
         "especialidad": "Cardiologia",
         "fecha": "2026-04-01",
