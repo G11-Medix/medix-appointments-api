@@ -32,6 +32,20 @@ class CitaResponse(BaseModel):
     fecha_actualizacion: datetime
 
 
+class CitaIpsResponse(BaseModel):
+    id: int
+    nombre_paciente: str
+    cedula_paciente: str
+    nombre_prestador: str | None = None
+    especialidad: str
+    fecha: date
+    hora: time
+    estado_cita: str
+    motivo_cancelacion: str | None
+    fecha_creacion: datetime
+    fecha_actualizacion: datetime
+
+
 class CitaConfirmacionResponse(BaseModel):
     doctor: str
     fecha: datetime

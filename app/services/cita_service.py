@@ -7,7 +7,7 @@ from supabase import Client
 
 from app.clients.ips_client import IpsClient
 from app.core.config import Settings, get_settings
-from app.schemas.cita import CitaCreate, CitaDelete, CitaUpdate, CitaAppResponse
+from app.schemas.cita import CitaCreate, CitaDelete, CitaIpsResponse, CitaUpdate, CitaAppResponse
 from app.services.institucion_service import InstitucionService
 from app.services.ips_mock_gateway import IpsMockGateway
 from app.services.ips_route_resolver import IpsRoute, IpsRouteResolver
@@ -56,6 +56,22 @@ class CitaService:
     def get_cita(self, id_institucion: int, id_cita: int, access_token: str | None = None) -> dict[str, Any]:
         route = self._resolve_route(id_institucion)
         return self._gateway().get_appointment(route=route, id_cita=id_cita, access_token=access_token)
+
+    def get_cita_ips(
+        self,
+        supabase: Client,
+        id_institucion: int,
+        id_cita: int,
+        access_token: str | None = None,
+    ) -> CitaIpsResponse:
+        route = self._resolve_route(id_institucion)
+        row = self._gateway().get_appointment(route=route, id_cita=id_cita, access_token=access_token)
+        return self._build_cita_ips_response(
+            route=route,
+            row=row,
+            especialidades_map=self._build_especialidades_map(supabase),
+            access_token=access_token,
+        )
 
     def get_cita_confirmacion(
         self,
@@ -110,6 +126,39 @@ class CitaService:
         return [
             row for row in rows
             if self._appointment_in_range(row, desde=desde, hasta=hasta)
+        ]
+
+    def list_citas_ips(
+        self,
+        supabase: Client,
+        id_institucion: int,
+        *,
+        tipo_documento: str | None = None,
+        cedula: str | None = None,
+        desde: datetime | None = None,
+        hasta: datetime | None = None,
+        access_token: str | None = None,
+    ) -> list[CitaIpsResponse]:
+        route = self._resolve_route(id_institucion)
+        especialidades_map = self._build_especialidades_map(supabase)
+        rows = self.list_citas(
+            id_institucion=id_institucion,
+            tipo_documento=tipo_documento,
+            cedula=cedula,
+            desde=desde,
+            hasta=hasta,
+            access_token=access_token,
+        )
+        patient_cache: dict[int, dict[str, Any]] = {}
+        return [
+            self._build_cita_ips_response(
+                route=route,
+                row=row,
+                especialidades_map=especialidades_map,
+                access_token=access_token,
+                patient_cache=patient_cache,
+            )
+            for row in rows
         ]
 
     def list_all_citas_by_paciente(
@@ -243,6 +292,88 @@ class CitaService:
             settings=self._settings(),
             route_resolver=self.route_resolver,
         )
+
+    def _build_especialidades_map(self, supabase: Client) -> dict[int, str]:
+        especialidades = self.especialidad_service.list_especialidades(supabase)
+        esp_map = {
+            int(esp["codigo_reps"]): str(esp["nombre"])
+            for esp in especialidades
+            if esp.get("codigo_reps") is not None
+        }
+        esp_map.update({
+            int(esp["id_especialidad"]): str(esp["nombre"])
+            for esp in especialidades
+            if esp.get("id_especialidad") is not None
+        })
+        return esp_map
+
+    def _build_cita_ips_response(
+        self,
+        *,
+        route: IpsRoute,
+        row: dict[str, Any],
+        especialidades_map: dict[int, str],
+        access_token: str | None = None,
+        patient_cache: dict[int, dict[str, Any]] | None = None,
+    ) -> CitaIpsResponse:
+        fecha_hora = _parse_optional_datetime(row.get("fecha_hora_cupo"))
+        if fecha_hora is None:
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="La IPS respondio una cita sin fecha/hora valida",
+            )
+
+        patient = self._get_patient_for_appointment(
+            route=route,
+            row=row,
+            access_token=access_token,
+            patient_cache=patient_cache,
+        )
+        specialty_id = row.get("id_especialidad")
+        specialty_name = row.get("nombre_especialidad")
+        if not specialty_name and specialty_id is not None:
+            specialty_name = especialidades_map.get(int(specialty_id), None)
+
+        return CitaIpsResponse(
+            id=int(row["id"]),
+            nombre_paciente=_patient_full_name(patient),
+            cedula_paciente=str(patient.get("numero_documento") or ""),
+            nombre_prestador=row.get("nombre_prestador"),
+            especialidad=str(specialty_name or "Especialidad desconocida"),
+            fecha=fecha_hora.date(),
+            hora=fecha_hora.time(),
+            estado_cita=str(row.get("estado") or ""),
+            motivo_cancelacion=row.get("motivo_cancelacion"),
+            fecha_creacion=_parse_optional_datetime(row.get("fecha_creacion")) or fecha_hora,
+            fecha_actualizacion=_parse_optional_datetime(row.get("fecha_actualizacion")) or fecha_hora,
+        )
+
+    def _get_patient_for_appointment(
+        self,
+        *,
+        route: IpsRoute,
+        row: dict[str, Any],
+        access_token: str | None = None,
+        patient_cache: dict[int, dict[str, Any]] | None = None,
+    ) -> dict[str, Any]:
+        id_paciente = int(row.get("id_paciente") or 0)
+        if id_paciente <= 0:
+            return {}
+        if patient_cache is not None and id_paciente in patient_cache:
+            return patient_cache[id_paciente]
+        try:
+            patient = self._gateway().get_patient(
+                route=route,
+                id_paciente=id_paciente,
+                access_token=access_token,
+            )
+        except HTTPException as exc:
+            if exc.status_code != status.HTTP_404_NOT_FOUND:
+                raise
+            patient = {}
+        if patient_cache is not None:
+            patient_cache[id_paciente] = patient
+        return patient
 
     @staticmethod
     def _appointment_in_range(
@@ -381,6 +512,11 @@ def _get_institucion(row: dict[str, Any], inst_map: dict[int, dict[str, Any]]) -
     if id_institucion is None:
         return {}
     return inst_map.get(int(id_institucion), {})
+
+
+def _patient_full_name(patient: dict[str, Any]) -> str:
+    full_name = f"{patient.get('nombres') or ''} {patient.get('apellidos') or ''}".strip()
+    return full_name or "Paciente desconocido"
 
 
 def _parse_optional_datetime(value: Any) -> datetime | None:

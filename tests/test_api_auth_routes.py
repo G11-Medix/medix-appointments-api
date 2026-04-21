@@ -71,6 +71,22 @@ def _build_cita_response(estado: str = "scheduled") -> dict:
     }
 
 
+def _build_cita_ips_response(estado: str = "scheduled") -> dict:
+    return {
+        "id": 10,
+        "nombre_paciente": "Ana Perez",
+        "cedula_paciente": "123",
+        "nombre_prestador": "Dr. Juan Perez",
+        "especialidad": "Cardiologia",
+        "fecha": "2026-04-01",
+        "hora": "08:00:00",
+        "estado_cita": estado,
+        "motivo_cancelacion": None if estado != "cancelled" else "Paciente no asiste",
+        "fecha_creacion": "2026-03-31T10:00:00",
+        "fecha_actualizacion": "2026-03-31T10:00:00",
+    }
+
+
 @pytest.fixture
 def auth_client(monkeypatch: pytest.MonkeyPatch) -> tuple[TestClient, str, object]:
     auth_user_id = str(uuid4())
@@ -191,6 +207,13 @@ def auth_client(monkeypatch: pytest.MonkeyPatch) -> tuple[TestClient, str, objec
             assert id_cita == 10
             assert access_token == "ok-token"
             return _build_cita_response()
+
+        def get_cita_ips(self, supabase, id_institucion: int, id_cita: int, access_token=None):  # noqa: ANN001
+            assert supabase is not None
+            assert id_institucion == 1
+            assert id_cita == 10
+            assert access_token == "ok-token"
+            return _build_cita_ips_response()
 
         def get_cita_confirmacion(self, supabase, id_institucion: int, id_cita: int, access_token=None):  # noqa: ANN001
             assert supabase is not None

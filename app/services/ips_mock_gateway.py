@@ -182,6 +182,15 @@ class IpsMockGateway:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Paciente no encontrado")
         return patient_to_legacy(patient_resources[0])
 
+    def get_patient(self, route: IpsRoute, id_paciente: int, access_token: str | None = None) -> dict[str, Any]:
+        response = self._client().request(
+            method="GET",
+            base_url=route.base_url,
+            path=f"/fhir/Patient/{id_paciente}",
+            extra_headers=fhir_headers(),
+        )
+        return patient_to_legacy(response) if isinstance(response, dict) else {}
+
     def get_appointment(self, route: IpsRoute, id_cita: int, access_token: str | None = None) -> dict[str, Any]:
         response = self._client().request(
             method="GET",

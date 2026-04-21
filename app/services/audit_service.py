@@ -39,14 +39,17 @@ class AuditService:
         except Exception:
             return None
 
-    def get_authenticated_user_id(self, request: Request) -> str | None:
-        cached_id = getattr(request.state, "authenticated_user_id", None)
-        if cached_id:
-            return str(cached_id)
-
+    def get_authenticated_user_id(self, request: Request, allow_token_user_id: bool = True) -> str | None:
         cached_user = getattr(request.state, "authenticated_user", None)
         user_id = getattr(cached_user, "id_usuario", None)
-        return str(user_id) if user_id else None
+        if user_id:
+            return str(user_id)
+
+        if not allow_token_user_id:
+            return None
+
+        cached_id = getattr(request.state, "authenticated_user_id", None)
+        return str(cached_id) if cached_id else None
 
     def build_detail(self, status_code: int, path: str, query: str) -> str:
         detail = f"status={status_code}; path={path}; query={query if query else '-'}"
