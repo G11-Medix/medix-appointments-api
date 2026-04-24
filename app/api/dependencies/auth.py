@@ -78,6 +78,37 @@ def require_active_user(
     return context
 
 
+def authenticate_active_user_token(
+    token: str,
+    supabase: Client | None = None,
+) -> AuthenticatedUserContext:
+    supabase = supabase or get_supabase_client()
+    user_id = _validate_token(supabase=supabase, token=token)
+    usuario = _get_usuario(supabase=supabase, user_id=user_id)
+    if not usuario:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Usuario no autorizado",
+        )
+
+    estado_usuario = str(usuario.get("estado") or "").upper()
+    if estado_usuario != "ACTIVO":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Usuario inactivo o no autorizado",
+        )
+
+    rol_usuario = str(usuario.get("rol") or "")
+    try:
+        return AuthenticatedUserContext(
+            id_usuario=UUID(user_id),
+            rol=rol_usuario,
+            estado=estado_usuario,
+        )
+    except ValueError as exc:
+        raise _unauthorized("Token inválido") from exc
+
+
 def get_authenticated_user_from_state(request: Request) -> AuthenticatedUserContext:
     context = getattr(request.state, "authenticated_user", None)
     if isinstance(context, AuthenticatedUserContext):

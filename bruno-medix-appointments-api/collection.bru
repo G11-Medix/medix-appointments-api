@@ -10,9 +10,9 @@ vars:pre-request {
   SUPABASE_TEST_EMAIL: {{process.env.SUPABASE_TEST_EMAIL}}
   SUPABASE_TEST_PASSWORD: {{process.env.SUPABASE_TEST_PASSWORD}}
   ID_INSTITUCION: 2
-  ID_EPS: 1
+  ID_EPS: 5
   CODIGO_REPS: 302
-  ID_PACIENTE: 26
+  ID_PACIENTE: 27
   ID_PACIENTE_IPS: 1
   PACIENTE_TIPO_DOCUMENTO: CC
   PACIENTE_NUMERO_DOCUMENTO: 1014977178
@@ -59,4 +59,31 @@ docs {
   
   ### Marcado de requests
   - Los requests cuyo bloque `docs` empieza con `[IPS-MOCK]` dependen de `ips-mock-service`.
+
+  ### Integración NATS
+  - El servicio de IA debe integrarse con esta API por NATS usando patrón request-reply.
+  - Los endpoints REST siguen funcionando y sirven para pruebas manuales y compatibilidad.
+  - La comunicación entre esta API y `ips-mock-service` se mantiene por REST sobre HL7 FHIR R4.
+  - Subjects disponibles para IA:
+    - `medix.appointments.especialidades.listar`
+    - `medix.appointments.instituciones.listar`
+    - `medix.appointments.instituciones.disponibilidad`
+    - `medix.appointments.pacientes.buscar`
+    - `medix.appointments.pacientes.obtener`
+    - `medix.appointments.citas.crear`
+    - `medix.appointments.citas.listar`
+    - `medix.appointments.pacientes.citas.listar`
+    - `medix.appointments.citas.cancelar`
+    - `medix.appointments.citas.reprogramar`
+    - `medix.appointments.citas.confirmacion`
+    - `medix.appointments.citas.obtener`
+  - Alias legacy soportados:
+    - `medix.appointments.assistant.buscar_paciente`
+    - `medix.appointments.assistant.instituciones_por_especialidad`
+    - `medix.appointments.assistant.disponibilidad`
+    - `medix.appointments.citas.listar_por_paciente`
+  - Envelope sugerido para requests NATS:
+    - `correlation_id`, `operation`, `access_token`, `payload`
+  - Envelope sugerido para responses NATS:
+    - `correlation_id`, `success`, `data`, `error`
 }
