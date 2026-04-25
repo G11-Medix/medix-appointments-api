@@ -1,0 +1,15 @@
+meta {
+  name: Get Recomendacion by ID
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{API_URL}}{{API_PREFIX}}/recomendaciones/{{ID_RECOMENDACION}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{ACCESS_TOKEN}}
+}
