@@ -26,6 +26,16 @@ class Settings(BaseSettings):
         validation_alias="NATS_CONNECT_TIMEOUT_SECONDS",
         gt=0,
     )
+    nats_connect_max_attempts: int = Field(
+        default=30,
+        validation_alias="NATS_CONNECT_MAX_ATTEMPTS",
+        gt=0,
+    )
+    nats_connect_retry_delay_seconds: float = Field(
+        default=1,
+        validation_alias="NATS_CONNECT_RETRY_DELAY_SECONDS",
+        gt=0,
+    )
 
     model_config = SettingsConfigDict(
         env_file=".env",

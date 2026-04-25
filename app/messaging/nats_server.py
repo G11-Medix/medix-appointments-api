@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from collections.abc import Awaitable, Callable
 from typing import Any
@@ -47,11 +48,10 @@ class NatsRequestReplyServer:
 
     async def start(self) -> None:
         if not self.settings.nats_enabled:
+            self.logger.info("NATS deshabilitado por configuracion")
             return
-        try:
-            self._nc = await self._connect()
-        except Exception:
-            self.logger.exception("No fue posible conectar con NATS")
+        self._nc = await self._connect_with_retries()
+        if self._nc is None:
             return
 
         for suffix in self._handler_map:
@@ -63,6 +63,11 @@ class NatsRequestReplyServer:
             )
             self._subscriptions.append(subscription)
             self.logger.info("Suscrito a NATS subject %s", subject)
+        self.logger.info(
+            "NATS listo en %s con %s subscriptions",
+            self.settings.nats_url,
+            len(self._subscriptions),
+        )
 
     async def close(self) -> None:
         if self._nc is None:
@@ -125,6 +130,35 @@ class NatsRequestReplyServer:
             self.settings.nats_url,
             connect_timeout=self.settings.nats_connect_timeout_seconds,
         )
+
+    async def _connect_with_retries(self) -> Any | None:
+        max_attempts = self.settings.nats_connect_max_attempts
+        retry_delay = self.settings.nats_connect_retry_delay_seconds
+        for attempt in range(1, max_attempts + 1):
+            try:
+                self.logger.info(
+                    "Conectando a NATS en %s intento %s/%s",
+                    self.settings.nats_url,
+                    attempt,
+                    max_attempts,
+                )
+                return await self._connect()
+            except Exception:
+                if attempt >= max_attempts:
+                    self.logger.exception(
+                        "No fue posible conectar con NATS en %s despues de %s intentos",
+                        self.settings.nats_url,
+                        max_attempts,
+                    )
+                    return None
+                self.logger.warning(
+                    "NATS no disponible en %s; reintentando en %s segundos",
+                    self.settings.nats_url,
+                    retry_delay,
+                    exc_info=True,
+                )
+                await asyncio.sleep(retry_delay)
+        return None
 
     @staticmethod
     def _error_response(*, correlation_id: str, code: int, detail: str) -> NatsResponseEnvelope:
