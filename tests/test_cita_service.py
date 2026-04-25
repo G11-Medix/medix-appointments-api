@@ -422,7 +422,7 @@ def test_get_cita_confirmacion_includes_active_recomendacion() -> None:
                 "institucion_id": 3,
                 "especialidad_id": 20,
                 "codigo": "CARDIO-PREP",
-                "recomendaciones": {"items": ["Llegar 20 minutos antes"]},
+                "recomendaciones": "Llegar 20 minutos antes. Traer documento de identidad.",
                 "prioridad": 2,
                 "activa": True,
             }

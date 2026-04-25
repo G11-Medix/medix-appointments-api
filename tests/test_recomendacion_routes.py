@@ -11,7 +11,7 @@ def _recomendacion_row(**overrides):
         "institucion_id": 10,
         "especialidad_id": 20,
         "codigo": "CARDIO-PREP",
-        "recomendaciones": {"items": ["Llegar 20 minutos antes"]},
+        "recomendaciones": "Llegar 20 minutos antes. Traer documento de identidad.",
         "prioridad": 2,
         "activa": True,
     }
@@ -66,7 +66,7 @@ def test_recomendaciones_crud_routes() -> None:
 
     get_response = client.get("/api/recomendaciones/1")
     assert get_response.status_code == 200
-    assert get_response.json()["recomendaciones"] == {"items": ["Llegar 20 minutos antes"]}
+    assert get_response.json()["recomendaciones"] == "Llegar 20 minutos antes. Traer documento de identidad."
 
     create_response = client.post(
         "/api/recomendaciones/",
@@ -74,7 +74,7 @@ def test_recomendaciones_crud_routes() -> None:
             "institucion_id": 10,
             "especialidad_id": 20,
             "codigo": "CARDIO-PREP",
-            "recomendaciones": {"items": ["Llegar 20 minutos antes"]},
+            "recomendaciones": "Llegar 20 minutos antes. Traer documento de identidad.",
             "prioridad": 2,
             "activa": True,
         },

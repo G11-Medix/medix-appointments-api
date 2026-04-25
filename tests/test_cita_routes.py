@@ -84,7 +84,7 @@ def client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
                     "institucion_id": 1,
                     "especialidad_id": 1,
                     "codigo": "CARDIO-PREP",
-                    "recomendaciones": {"items": ["Llegar 20 minutos antes"]},
+                    "recomendaciones": "Llegar 20 minutos antes. Traer documento de identidad.",
                     "prioridad": 2,
                     "activa": True,
                 },
