@@ -78,6 +78,16 @@ def client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
                 "latitud": 4.7110,
                 "longitud": -74.0721,
                 "estado": "scheduled",
+                "recomendacion": {
+                    "id": 1,
+                    "created_at": "2026-04-01T10:00:00+00:00",
+                    "institucion_id": 1,
+                    "especialidad_id": 1,
+                    "codigo": "CARDIO-PREP",
+                    "recomendaciones": "Llegar 20 minutos antes. Traer documento de identidad.",
+                    "prioridad": 2,
+                    "activa": True,
+                },
             }
 
         def list_citas(self, id_institucion: int, *, tipo_documento=None, cedula=None, desde=None, hasta=None, access_token: str | None = None):  # noqa: ANN001
@@ -163,6 +173,7 @@ def test_cita_crud_happy_path(client: TestClient) -> None:
     confirmation_resp = client.get("/api/instituciones/1/citas/10/confirmacion")
     assert confirmation_resp.status_code == 200
     assert confirmation_resp.json()["doctor"] == "Dr. Juan Perez"
+    assert confirmation_resp.json()["recomendacion"]["codigo"] == "CARDIO-PREP"
 
     list_resp = client.get(
         "/api/instituciones/1/citas/",
