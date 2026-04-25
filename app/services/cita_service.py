@@ -13,6 +13,7 @@ from app.services.ips_mock_gateway import IpsMockGateway
 from app.services.ips_route_resolver import IpsRoute, IpsRouteResolver
 from app.services.especialidad_service import EspecialidadService
 from app.services.paciente_service import PacienteService
+from app.services.recomendacion_service import RecomendacionService
 
 LOGGER = logging.getLogger(__name__)
 
@@ -25,6 +26,7 @@ class CitaService:
         institucion_service: InstitucionService | None = None,
         especialidad_service: EspecialidadService | None = None,
         paciente_service: PacienteService | None = None,
+        recomendacion_service: RecomendacionService | None = None,
         route_resolver: IpsRouteResolver | None = None,
         logger: logging.Logger | None = None,
     ) -> None:
@@ -33,6 +35,7 @@ class CitaService:
         self.institucion_service = institucion_service or InstitucionService()
         self.especialidad_service = especialidad_service or EspecialidadService()
         self.paciente_service = paciente_service or PacienteService()
+        self.recomendacion_service = recomendacion_service or RecomendacionService()
         self.route_resolver = route_resolver or IpsRouteResolver(settings=settings)
         self.logger = logger or LOGGER
 
@@ -85,6 +88,15 @@ class CitaService:
         if not institucion:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Institucion no encontrada")
 
+        recomendacion = None
+        especialidad_id = self._resolve_especialidad_id_from_cita(supabase=supabase, cita=cita)
+        if especialidad_id is not None:
+            recomendacion = self.recomendacion_service.get_active_for_context(
+                supabase=supabase,
+                institucion_id=id_institucion,
+                especialidad_id=especialidad_id,
+            )
+
         return {
             "doctor": str(cita.get("nombre_prestador") or f"Prestador {cita['id_prestador']}"),
             "fecha": cita["fecha_hora_cupo"],
@@ -93,6 +105,7 @@ class CitaService:
             "latitud": institucion.get("latitud"),
             "longitud": institucion.get("longitud"),
             "estado": cita["estado"],
+            "recomendacion": recomendacion,
         }
 
     def list_citas(
@@ -306,6 +319,23 @@ class CitaService:
             if esp.get("id_especialidad") is not None
         })
         return esp_map
+
+    def _resolve_especialidad_id_from_cita(self, supabase: Client, cita: dict[str, Any]) -> int | None:
+        raw_especialidad_id = cita.get("id_especialidad")
+        if raw_especialidad_id is None:
+            return None
+        try:
+            lookup_id = int(raw_especialidad_id)
+        except (TypeError, ValueError):
+            return None
+
+        especialidades = self.especialidad_service.list_especialidades(supabase)
+        for especialidad in especialidades:
+            if especialidad.get("id_especialidad") is not None and int(especialidad["id_especialidad"]) == lookup_id:
+                return int(especialidad["id_especialidad"])
+            if especialidad.get("codigo_reps") is not None and int(especialidad["codigo_reps"]) == lookup_id:
+                return int(especialidad["id_especialidad"])
+        return lookup_id
 
     def _build_cita_ips_response(
         self,

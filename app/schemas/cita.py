@@ -2,6 +2,8 @@ from datetime import date, datetime, time
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.schemas.recomendacion import RecomendacionResponse
+
 
 class CitaCreate(BaseModel):
     tipo_documento: str = Field(min_length=1, max_length=20)
@@ -55,6 +57,8 @@ class CitaConfirmacionResponse(BaseModel):
     latitud: float | None = None
     longitud: float | None = None
     estado: str
+    recomendacion: RecomendacionResponse | None = None
+
 
 class CitaAppResponse(BaseModel):
     id: int
