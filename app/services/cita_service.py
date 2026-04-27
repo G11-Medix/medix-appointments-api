@@ -14,6 +14,7 @@ from app.services.ips_route_resolver import IpsRoute, IpsRouteResolver
 from app.services.especialidad_service import EspecialidadService
 from app.services.paciente_service import PacienteService
 from app.services.recomendacion_service import RecomendacionService
+from app.services.notificacion_cita_service import NotificacionCitaService
 
 LOGGER = logging.getLogger(__name__)
 
@@ -29,6 +30,7 @@ class CitaService:
         recomendacion_service: RecomendacionService | None = None,
         route_resolver: IpsRouteResolver | None = None,
         logger: logging.Logger | None = None,
+        notificacion_service: NotificacionCitaService | None = None
     ) -> None:
         self.settings = settings
         self.client = client
@@ -38,16 +40,26 @@ class CitaService:
         self.recomendacion_service = recomendacion_service or RecomendacionService()
         self.route_resolver = route_resolver or IpsRouteResolver(settings=settings)
         self.logger = logger or LOGGER
+        self.notificacion_service = notificacion_service or NotificacionCitaService()
 
-    def create_cita(self, id_institucion: int, payload: CitaCreate, access_token: str | None = None) -> dict[str, Any]:
+    def create_cita(
+        self,
+        supabase: Client,  
+        id_institucion: int,
+        payload: CitaCreate,
+        access_token: str | None = None
+    ) -> dict[str, Any]:
+
         route = self._resolve_route(id_institucion)
+
         patient = self._gateway().find_patient_by_document(
             route=route,
             tipo_documento=payload.tipo_documento,
             numero_documento=payload.numero_documento,
             access_token=access_token,
         )
-        return self._gateway().create_appointment(
+
+        cita = self._gateway().create_appointment(
             route=route,
             id_paciente=int(patient["id_paciente"]),
             id_prestador=payload.id_prestador,
@@ -55,6 +67,15 @@ class CitaService:
             id_especialidad=getattr(payload, "id_especialidad", None),
             access_token=access_token,
         )
+
+        
+        self.notificacion_service.guardar_notificacion(
+            supabase,
+            {**cita, "id_institucion": id_institucion}
+        )
+
+
+        return cita
 
     def get_cita(self, id_institucion: int, id_cita: int, access_token: str | None = None) -> dict[str, Any]:
         route = self._resolve_route(id_institucion)
@@ -258,33 +279,62 @@ class CitaService:
 
     def update_cita(
         self,
+        supabase: Client,  
         id_institucion: int,
         id_cita: int,
         payload: CitaUpdate,
         access_token: str | None = None,
     ) -> dict[str, Any]:
+
         route = self._resolve_route(id_institucion)
-        return self._gateway().reschedule_appointment(
+
+        cita_actualizada = self._gateway().reschedule_appointment(
             route=route,
             id_cita=id_cita,
             nueva_fecha_hora_cupo=payload.nueva_fecha_hora_cupo,
             access_token=access_token,
         )
 
+        
+        self.notificacion_service.guardar_notificacion(
+            supabase,
+            {**cita_actualizada, "id_institucion": id_institucion}
+        )
+
+        return cita_actualizada
+
     def delete_cita(
         self,
+        supabase: Client,  
         id_institucion: int,
         id_cita: int,
         payload: CitaDelete,
         access_token: str | None = None,
     ) -> dict[str, Any]:
+
         route = self._resolve_route(id_institucion)
-        return self._gateway().cancel_appointment(
+
+        
+        cita = self._gateway().get_appointment(
+            route=route,
+            id_cita=id_cita,
+            access_token=access_token,
+        )
+
+        result = self._gateway().cancel_appointment(
             route=route,
             id_cita=id_cita,
             motivo=payload.motivo,
             access_token=access_token,
         )
+
+        
+        self.notificacion_service.eliminar_notificacion(
+            supabase,
+            {**cita, "id_institucion": id_institucion}
+        )
+
+        return result
 
     def _resolve_route(self, id_institucion: int) -> IpsRoute:
         return self.route_resolver.get_route(id_institucion)
