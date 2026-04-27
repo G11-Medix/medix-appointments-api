@@ -394,3 +394,55 @@ def test_list_citas_app_by_paciente_doc_uses_fhir_patient_lookup() -> None:
     assert client.calls[1]["path"] == "/fhir/Appointment"
     assert client.calls[1]["params"] == {"patient": "Patient/5"}
     assert client.calls[1]["extra_headers"]["Authorization"] == "Bearer ok-token"
+
+
+def test_get_cita_confirmacion_includes_active_recomendacion() -> None:
+    class FakeInstitucionService:
+        def get_institucion(self, supabase, id_institucion: int):  # noqa: ANN001
+            assert id_institucion == 3
+            return {
+                "id_institucion": 3,
+                "nombre": "IPS Demo",
+                "direccion": "Calle 1",
+                "latitud": 4.6,
+                "longitud": -74.1,
+            }
+
+    class FakeEspecialidadService:
+        def list_especialidades(self, supabase):  # noqa: ANN001
+            return [{"id_especialidad": 20, "nombre": "Cardiologia", "codigo_reps": 302}]
+
+    class FakeRecomendacionService:
+        def get_active_for_context(self, supabase, *, institucion_id: int, especialidad_id: int):  # noqa: ANN001
+            assert institucion_id == 3
+            assert especialidad_id == 20
+            return {
+                "id": 1,
+                "created_at": "2026-04-01T10:00:00+00:00",
+                "institucion_id": 3,
+                "especialidad_id": 20,
+                "codigo": "CARDIO-PREP",
+                "recomendaciones": "Llegar 20 minutos antes. Traer documento de identidad.",
+                "prioridad": 2,
+                "activa": True,
+            }
+
+    service = CitaService(
+        client=DummyIpsClient(),
+        settings=SimpleNamespace(
+            ips_routes_json='{"3":{"base_url":"http://localhost:4013","api_key":"ips-cpc-key"}}',
+            ips_timeout_seconds=10,
+        ),
+        institucion_service=FakeInstitucionService(),
+        especialidad_service=FakeEspecialidadService(),
+        recomendacion_service=FakeRecomendacionService(),
+    )
+
+    response = service.get_cita_confirmacion(
+        supabase=object(),
+        id_institucion=3,
+        id_cita=10,
+    )
+
+    assert response["doctor"] == "Prestador 2"
+    assert response["recomendacion"]["codigo"] == "CARDIO-PREP"
