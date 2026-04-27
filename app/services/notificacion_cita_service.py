@@ -3,6 +3,7 @@ from fastapi import HTTPException, status
 
 from app.repositories.notificacion_cita_repository import NotificacionCitaRepository
 from app.repositories.paciente_repository import PacienteRepository
+from app.repositories.especialidad_repository import EspecialidadRepository
 
 
 class NotificacionCitaService:
@@ -10,16 +11,14 @@ class NotificacionCitaService:
     def __init__(self):
         self.repo = NotificacionCitaRepository()
         self.paciente_repo = PacienteRepository()
+        self.especialidad_repo = EspecialidadRepository()
 
     def guardar_notificacion(
         self,
         supabase: Client,
         cita: dict,
     ):
-        paciente = self.paciente_repo.get_by_id(
-            supabase,
-            cita["id_paciente"]
-        )
+        paciente = self._get_paciente_local(supabase, cita)
 
         if not paciente:
             raise Exception("Paciente no encontrado")
@@ -27,10 +26,12 @@ class NotificacionCitaService:
         if not paciente.get("id_usuario"):
             raise Exception("El paciente no tiene usuario asociado")
 
+        especialidad = self._get_especialidad_local(supabase, cita)
+
         payload = {
-            "id_paciente": cita["id_paciente"],
+            "id_paciente": paciente["id_paciente"],
             "id_institucion": cita["id_institucion"],
-            "id_especialidad": cita.get("id_especialidad"),
+            "id_especialidad": especialidad["id_especialidad"] if especialidad else None,
             "telefono": paciente.get("telefono"),
             "fecha_cita": cita["fecha_hora_cupo"],
             "id_usuario": paciente["id_usuario"], 
@@ -46,10 +47,46 @@ class NotificacionCitaService:
         supabase: Client,
         cita: dict,
     ):
+        paciente = self._get_paciente_local(supabase, cita)
+
+        if not paciente:
+            raise Exception("Paciente no encontrado")
+
+        especialidad = self._get_especialidad_local(supabase, cita)
+
         return self.repo.delete(
             supabase,
-            id_paciente=cita["id_paciente"],
+            id_paciente=paciente["id_paciente"],
             id_institucion=cita["id_institucion"],
             fecha_cita=cita["fecha_hora_cupo"],
-            id_especialidad=cita.get("id_especialidad"),
+            id_especialidad=especialidad["id_especialidad"] if especialidad else None,
         )
+
+    def _get_paciente_local(self, supabase: Client, cita: dict) -> dict | None:
+        tipo_documento = cita.get("tipo_documento")
+        numero_documento = cita.get("numero_documento") or cita.get("cedula")
+
+        if not tipo_documento or not numero_documento:
+            raise Exception("La cita no incluye tipo y numero de documento del paciente")
+
+        return self.paciente_repo.get_by_document(
+            supabase,
+            tipo_documento=str(tipo_documento),
+            numero_documento=str(numero_documento),
+        )
+
+    def _get_especialidad_local(self, supabase: Client, cita: dict) -> dict | None:
+        codigo_reps = cita.get("id_especialidad")
+
+        if codigo_reps is None:
+            return None
+
+        especialidad = self.especialidad_repo.get_by_codigo_reps(
+            supabase,
+            codigo_reps=int(codigo_reps),
+        )
+
+        if not especialidad:
+            raise Exception("Especialidad no encontrada")
+
+        return especialidad

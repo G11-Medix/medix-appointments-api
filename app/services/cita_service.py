@@ -71,7 +71,12 @@ class CitaService:
         
         self.notificacion_service.guardar_notificacion(
             supabase,
-            {**cita, "id_institucion": id_institucion}
+            {
+                **cita,
+                "id_institucion": id_institucion,
+                "tipo_documento": patient.get("tipo_documento") or payload.tipo_documento,
+                "numero_documento": patient.get("numero_documento") or payload.numero_documento,
+            }
         )
 
 
@@ -295,6 +300,11 @@ class CitaService:
             access_token=access_token,
         )
 
+        cita_actualizada = self._enrich_cita_with_patient_document(
+            route=route,
+            cita=cita_actualizada,
+            access_token=access_token,
+        )
         
         self.notificacion_service.guardar_notificacion(
             supabase,
@@ -320,6 +330,11 @@ class CitaService:
             id_cita=id_cita,
             access_token=access_token,
         )
+        cita = self._enrich_cita_with_patient_document(
+            route=route,
+            cita=cita,
+            access_token=access_token,
+        )
 
         result = self._gateway().cancel_appointment(
             route=route,
@@ -338,6 +353,27 @@ class CitaService:
 
     def _resolve_route(self, id_institucion: int) -> IpsRoute:
         return self.route_resolver.get_route(id_institucion)
+
+    def _enrich_cita_with_patient_document(
+        self,
+        *,
+        route: IpsRoute,
+        cita: dict[str, Any],
+        access_token: str | None = None,
+    ) -> dict[str, Any]:
+        if cita.get("tipo_documento") and cita.get("numero_documento"):
+            return cita
+
+        patient = self._gateway().get_patient(
+            route=route,
+            id_paciente=int(cita["id_paciente"]),
+            access_token=access_token,
+        )
+        return {
+            **cita,
+            "tipo_documento": patient.get("tipo_documento"),
+            "numero_documento": patient.get("numero_documento"),
+        }
 
     def _settings(self) -> Settings:
         if self.settings is None:
