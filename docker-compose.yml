@@ -1,4 +1,14 @@
 services:
+  nats:
+    image: nats:2.10-alpine
+    container_name: medix_nats
+    command: ["-m", "8222"]
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+    networks:
+      - medix_net
+
   medix_appointments_api:
     build:
       context: .
@@ -10,8 +20,14 @@ services:
       IPS_ROUTES_JSON: >-
         {"2":{"base_url":"http://ips_santa_fe:4011","api_key":"ips-fsf-key"},"3":{"base_url":"http://ips_country:4012","api_key":"ips-cly-key"},"4":{"base_url":"http://ips_clinica_colombia:4013","api_key":"ips-cuc-key"},"5":{"base_url":"http://ips_san_ignacio:4014","api_key":"ips-hsi-key"},"6":{"base_url":"http://ips_mederi:4015","api_key":"ips-med-key"}}
       IPS_TIMEOUT_SECONDS: "10"
+      NATS_ENABLED: "true"
+      NATS_URL: nats://nats:4222
+      NATS_CONNECT_MAX_ATTEMPTS: "30"
+      NATS_CONNECT_RETRY_DELAY_SECONDS: "1"
     ports:
       - "8001:8001"
+    depends_on:
+      - nats
     networks:
       - medix_net
 
