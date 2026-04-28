@@ -3,6 +3,8 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 
 from fastapi import HTTPException, status
+from postgrest.exceptions import APIError
+from supabase import Client
 
 from app.core.config import Settings, get_settings
 
@@ -18,17 +20,47 @@ class IpsRouteResolver:
     def __init__(self, settings: Settings | None = None) -> None:
         self.settings = settings
 
-    def list_routes(self) -> list[IpsRoute]:
-        return list(_parse_routes(self._settings().ips_routes_json).values())
+    def list_routes(self, supabase: Client | None = None) -> list[IpsRoute]:
+        return list(self._routes(supabase=supabase).values())
 
-    def get_route(self, id_institucion: int) -> IpsRoute:
-        route = _parse_routes(self._settings().ips_routes_json).get(id_institucion)
+    def get_route(self, id_institucion: int, supabase: Client | None = None) -> IpsRoute:
+        route = self._routes(supabase=supabase).get(id_institucion)
         if route is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"No hay configuración IPS para id_institucion={id_institucion}",
             )
         return route
+
+    def _routes(self, supabase: Client | None = None) -> dict[int, IpsRoute]:
+        routes = _parse_routes(self._settings().ips_routes_json)
+        if supabase is None or not hasattr(supabase, "table"):
+            return routes
+
+        try:
+            response = (
+                supabase.table("Institucion")
+                .select("id_institucion,service_url")
+                .execute()
+            )
+        except APIError as exc:
+            if _is_missing_service_url_error(exc):
+                return routes
+            raise
+        for row in response.data or []:
+            raw_id = row.get("id_institucion")
+            service_url = row.get("service_url")
+            if raw_id is None or not isinstance(service_url, str) or not service_url.strip():
+                continue
+
+            id_institucion = int(raw_id)
+            existing_route = routes.get(id_institucion)
+            routes[id_institucion] = IpsRoute(
+                id_institucion=id_institucion,
+                base_url=service_url.strip().rstrip("/"),
+                api_key=existing_route.api_key if existing_route else None,
+            )
+        return routes
 
     def _settings(self) -> Settings:
         if self.settings is None:
@@ -79,3 +111,8 @@ def _parse_routes(raw_json: str) -> dict[int, IpsRoute]:
         )
 
     return routes
+
+
+def _is_missing_service_url_error(error: APIError) -> bool:
+    error_text = str(error)
+    return "service_url" in error_text and ("42703" in error_text or "does not exist" in error_text)

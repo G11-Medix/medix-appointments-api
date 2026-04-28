@@ -36,6 +36,7 @@ def client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
                     "longitud": -74.1,
                     "latitud": 4.6,
                     "logo_url": "https://example.com/logo.png",
+                    "service_url": None,
                 }
             ]
 
@@ -71,6 +72,7 @@ def test_list_eps_related_ips_returns_collection(client: TestClient) -> None:
             "longitud": -74.1,
             "latitud": 4.6,
             "logo_url": "https://example.com/logo.png",
+            "service_url": None,
         }
     ]
 

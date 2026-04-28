@@ -39,8 +39,14 @@ class CitaService:
         self.route_resolver = route_resolver or IpsRouteResolver(settings=settings)
         self.logger = logger or LOGGER
 
-    def create_cita(self, id_institucion: int, payload: CitaCreate, access_token: str | None = None) -> dict[str, Any]:
-        route = self._resolve_route(id_institucion)
+    def create_cita(
+        self,
+        id_institucion: int,
+        payload: CitaCreate,
+        access_token: str | None = None,
+        supabase: Client | None = None,
+    ) -> dict[str, Any]:
+        route = self._resolve_route(id_institucion, supabase=supabase)
         patient = self._gateway().find_patient_by_document(
             route=route,
             tipo_documento=payload.tipo_documento,
@@ -56,8 +62,14 @@ class CitaService:
             access_token=access_token,
         )
 
-    def get_cita(self, id_institucion: int, id_cita: int, access_token: str | None = None) -> dict[str, Any]:
-        route = self._resolve_route(id_institucion)
+    def get_cita(
+        self,
+        id_institucion: int,
+        id_cita: int,
+        access_token: str | None = None,
+        supabase: Client | None = None,
+    ) -> dict[str, Any]:
+        route = self._resolve_route(id_institucion, supabase=supabase)
         return self._gateway().get_appointment(route=route, id_cita=id_cita, access_token=access_token)
 
     def get_cita_ips(
@@ -67,7 +79,7 @@ class CitaService:
         id_cita: int,
         access_token: str | None = None,
     ) -> CitaIpsResponse:
-        route = self._resolve_route(id_institucion)
+        route = self._resolve_route(id_institucion, supabase=supabase)
         row = self._gateway().get_appointment(route=route, id_cita=id_cita, access_token=access_token)
         return self._build_cita_ips_response(
             route=route,
@@ -83,7 +95,12 @@ class CitaService:
         id_cita: int,
         access_token: str | None = None,
     ) -> dict[str, Any]:
-        cita = self.get_cita(id_institucion=id_institucion, id_cita=id_cita, access_token=access_token)
+        cita = self.get_cita(
+            id_institucion=id_institucion,
+            id_cita=id_cita,
+            access_token=access_token,
+            supabase=supabase,
+        )
         institucion = self.institucion_service.get_institucion(supabase=supabase, id_institucion=id_institucion)
         if not institucion:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Institucion no encontrada")
@@ -117,8 +134,9 @@ class CitaService:
         desde: datetime | None = None,
         hasta: datetime | None = None,
         access_token: str | None = None,
+        supabase: Client | None = None,
     ) -> list[dict[str, Any]]:
-        route = self._resolve_route(id_institucion)
+        route = self._resolve_route(id_institucion, supabase=supabase)
         id_paciente: int | None = None
         if cedula is not None:
             patient = self._gateway().find_patient_by_document(
@@ -152,7 +170,7 @@ class CitaService:
         hasta: datetime | None = None,
         access_token: str | None = None,
     ) -> list[CitaIpsResponse]:
-        route = self._resolve_route(id_institucion)
+        route = self._resolve_route(id_institucion, supabase=supabase)
         especialidades_map = self._build_especialidades_map(supabase)
         rows = self.list_citas(
             id_institucion=id_institucion,
@@ -161,6 +179,7 @@ class CitaService:
             desde=desde,
             hasta=hasta,
             access_token=access_token,
+            supabase=supabase,
         )
         patient_cache: dict[int, dict[str, Any]] = {}
         return [
@@ -189,7 +208,7 @@ class CitaService:
                 if not id_institucion:
                     self.logger.warning("Institucion sin id valido en listado de citas: %s", inst)
                     continue
-                route = self._resolve_route(id_institucion)
+                route = self._resolve_route(id_institucion, supabase=supabase)
                 response = self._gateway().list_appointments(
                     route=route,
                     id_paciente=id_paciente,
@@ -262,8 +281,9 @@ class CitaService:
         id_cita: int,
         payload: CitaUpdate,
         access_token: str | None = None,
+        supabase: Client | None = None,
     ) -> dict[str, Any]:
-        route = self._resolve_route(id_institucion)
+        route = self._resolve_route(id_institucion, supabase=supabase)
         return self._gateway().reschedule_appointment(
             route=route,
             id_cita=id_cita,
@@ -277,8 +297,9 @@ class CitaService:
         id_cita: int,
         payload: CitaDelete,
         access_token: str | None = None,
+        supabase: Client | None = None,
     ) -> dict[str, Any]:
-        route = self._resolve_route(id_institucion)
+        route = self._resolve_route(id_institucion, supabase=supabase)
         return self._gateway().cancel_appointment(
             route=route,
             id_cita=id_cita,
@@ -286,8 +307,8 @@ class CitaService:
             access_token=access_token,
         )
 
-    def _resolve_route(self, id_institucion: int) -> IpsRoute:
-        return self.route_resolver.get_route(id_institucion)
+    def _resolve_route(self, id_institucion: int, supabase: Client | None = None) -> IpsRoute:
+        return self.route_resolver.get_route(id_institucion, supabase=supabase)
 
     def _settings(self) -> Settings:
         if self.settings is None:
@@ -436,7 +457,7 @@ class CitaService:
                 if not id_institucion:
                     self.logger.warning("Institucion sin id valido en listado de citas: %s", inst)
                     continue
-                route = self._resolve_route(id_institucion)
+                route = self._resolve_route(id_institucion, supabase=supabase)
                 patient = self._gateway().find_patient_by_document(
                     route=route,
                     tipo_documento=tipo_documento,

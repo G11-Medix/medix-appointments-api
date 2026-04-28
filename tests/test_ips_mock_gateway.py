@@ -5,6 +5,31 @@ from app.services.ips_mock_gateway import IpsMockGateway
 from app.services.ips_route_resolver import IpsRouteResolver
 
 
+class FakeExecuteResponse:
+    def __init__(self, data: list[dict]) -> None:
+        self.data = data
+
+
+class FakeSupabaseQuery:
+    def __init__(self, data: list[dict]) -> None:
+        self.data = data
+
+    def select(self, _fields: str):  # noqa: ANN001
+        return self
+
+    def execute(self) -> FakeExecuteResponse:
+        return FakeExecuteResponse(self.data)
+
+
+class FakeSupabase:
+    def __init__(self, data: list[dict]) -> None:
+        self.data = data
+
+    def table(self, name: str) -> FakeSupabaseQuery:
+        assert name == "Institucion"
+        return FakeSupabaseQuery(self.data)
+
+
 class DummyIpsClient:
     def __init__(self) -> None:
         self.calls: list[dict] = []
@@ -188,3 +213,30 @@ def test_gateway_maps_ips_mock_requests() -> None:
     assert client.calls[8]["path"] == "/fhir/Appointment/10"
     assert client.calls[9]["path"] == "/fhir/Patient"
     assert client.calls[9]["params"] == {"identifier": "urn:medix:document:cc|123"}
+
+
+def test_route_resolver_prefers_database_service_url_and_keeps_api_key() -> None:
+    settings = SimpleNamespace(
+        ips_routes_json='{"1":{"base_url":"http://env-ips","api_key":"key"}}',
+        ips_timeout_seconds=10,
+    )
+    resolver = IpsRouteResolver(settings=settings)
+    supabase = FakeSupabase([{"id_institucion": 1, "service_url": "http://db-ips/"}])
+
+    route = resolver.get_route(1, supabase=supabase)
+
+    assert route.base_url == "http://db-ips"
+    assert route.api_key == "key"
+
+
+def test_route_resolver_keeps_env_fallback_when_database_url_is_empty() -> None:
+    settings = SimpleNamespace(
+        ips_routes_json='{"1":{"base_url":"http://env-ips","api_key":"key"}}',
+        ips_timeout_seconds=10,
+    )
+    resolver = IpsRouteResolver(settings=settings)
+    supabase = FakeSupabase([{"id_institucion": 1, "service_url": ""}])
+
+    route = resolver.get_route(1, supabase=supabase)
+
+    assert route.base_url == "http://env-ips"
