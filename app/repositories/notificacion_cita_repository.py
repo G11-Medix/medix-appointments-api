@@ -33,7 +33,7 @@ class NotificacionCitaRepository:
             .eq("fecha_cita", fecha_cita)
         )
 
-        # 🔥 MUY IMPORTANTE: manejar null correctamente
+        
         if id_especialidad is None:
             query = query.is_("id_especialidad", "null")
         else:
