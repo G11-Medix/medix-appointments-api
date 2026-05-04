@@ -14,6 +14,28 @@ class Settings(BaseSettings):
     )
     ips_routes_json: str = Field(default="{}", validation_alias="IPS_ROUTES_JSON")
     ips_timeout_seconds: float = Field(default=10, validation_alias="IPS_TIMEOUT_SECONDS", gt=0)
+    nats_enabled: bool = Field(default=False, validation_alias="NATS_ENABLED")
+    nats_url: str = Field(default="nats://localhost:4222", validation_alias="NATS_URL")
+    nats_subject_prefix: str = Field(
+        default="medix.appointments",
+        validation_alias="NATS_SUBJECT_PREFIX",
+    )
+    nats_queue_group: str = Field(default="medix-api", validation_alias="NATS_QUEUE_GROUP")
+    nats_connect_timeout_seconds: float = Field(
+        default=2,
+        validation_alias="NATS_CONNECT_TIMEOUT_SECONDS",
+        gt=0,
+    )
+    nats_connect_max_attempts: int = Field(
+        default=30,
+        validation_alias="NATS_CONNECT_MAX_ATTEMPTS",
+        gt=0,
+    )
+    nats_connect_retry_delay_seconds: float = Field(
+        default=1,
+        validation_alias="NATS_CONNECT_RETRY_DELAY_SECONDS",
+        gt=0,
+    )
 
     model_config = SettingsConfigDict(
         env_file=".env",
