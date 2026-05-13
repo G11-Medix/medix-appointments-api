@@ -66,20 +66,6 @@ class CitaService:
             access_token=access_token,
         )
 
-        
-        self.notificacion_service.guardar_notificacion(
-            supabase,
-            {
-                **cita,
-                "id_institucion": id_institucion,
-                "tipo_documento": patient.get("tipo_documento") or payload.tipo_documento,
-                "numero_documento": patient.get("numero_documento") or payload.numero_documento,
-            }
-        )
-
-
-        return cita
-
     def get_cita(self, id_institucion: int, id_cita: int, access_token: str | None = None) -> dict[str, Any]:
         route = self._resolve_route(id_institucion)
         return self._gateway().get_appointment(route=route, id_cita=id_cita, access_token=access_token)
@@ -288,8 +274,7 @@ class CitaService:
         ]
 
     def update_cita(
-        self,
-        supabase: Client,  
+        self, 
         id_institucion: int,
         id_cita: int,
         payload: CitaUpdate,
@@ -320,8 +305,7 @@ class CitaService:
         return cita_actualizada
 
     def delete_cita(
-        self,
-        supabase: Client,  
+        self, 
         id_institucion: int,
         id_cita: int,
         payload: CitaDelete,
