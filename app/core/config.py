@@ -7,6 +7,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     environment: str = Field(default="development", validation_alias="ENVIRONMENT")
     supabase_url: str = Field(validation_alias="SUPABASE_URL")
+    jwt_secret: str = Field(validation_alias="JWT_SECRET")
     supabase_key: str = Field(validation_alias="SUPABASE_KEY")
     supabase_service_role_key: str | None = Field(
         default=None,

@@ -464,6 +464,58 @@ class CitaService:
             fecha_creacion=_parse_optional_datetime(row.get("fecha_creacion")) or fecha_hora,
             fecha_actualizacion=_parse_optional_datetime(row.get("fecha_actualizacion")) or fecha_hora,
         )
+    
+    def delete_cita_magic(
+        self,
+        *,
+        supabase: Client,
+        id_institucion: int,
+        id_cita: int,
+        motivo: str,
+        numero_documento: str,
+        tipo_documento: str,
+    ):
+
+        route = self._resolve_route(
+            id_institucion
+        )
+
+        patient = self._gateway().find_patient_by_document(
+            route=route,
+            tipo_documento=tipo_documento,
+            numero_documento=numero_documento,
+            access_token=None
+        )
+
+        cita = self._gateway().get_appointment(
+            route=route,
+            id_cita=id_cita,
+            access_token=None
+        )
+
+        if int(cita["id_paciente"]) != int(patient["id_paciente"]):
+
+            raise HTTPException(
+                status_code=403,
+                detail="La cita no pertenece al usuario"
+            )
+
+        result = self._gateway().cancel_appointment(
+            route=route,
+            id_cita=id_cita,
+            motivo=motivo,
+            access_token=None
+        )
+
+        self.notificacion_service.eliminar_notificacion(
+            supabase,
+            {
+                **cita,
+                "id_institucion": id_institucion
+            }
+        )
+
+        return result
 
     def _get_patient_for_appointment(
         self,

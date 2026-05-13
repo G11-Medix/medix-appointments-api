@@ -2,6 +2,7 @@ from fastapi import FastAPI
 
 from app.api.routes.auth import public_router as auth_public_router
 from app.api.routes.eps import router as eps_router
+from app.api.routes.magic import router as magic_router
 from app.api.routes.paciente import registration_router as paciente_registration_router
 from app.api.middlewares.audit_middleware import build_audit_middleware
 from app.api.router import api_router
@@ -16,7 +17,7 @@ app.include_router(auth_public_router)
 app.include_router(eps_router, prefix="/api")
 app.include_router(paciente_registration_router, prefix="/api")
 app.include_router(api_router, prefix="/api")
-
+app.include_router(magic_router)
 
 @app.on_event("startup")
 async def startup_nats_server() -> None:
