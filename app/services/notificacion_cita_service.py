@@ -13,13 +13,9 @@ class NotificacionCitaService:
         self.paciente_repo = PacienteRepository()
         self.especialidad_repo = EspecialidadRepository()
 
-    def guardar_notificacion(
-        self,
-        supabase: Client,
-        cita: dict,
-    ):
-        paciente = self._get_paciente_local(supabase, cita)
+    def guardar_notificacion(self, supabase: Client, cita: dict):
 
+        paciente = self._get_paciente_local(supabase, cita)
         if not paciente:
             raise Exception("Paciente no encontrado")
 
@@ -34,13 +30,17 @@ class NotificacionCitaService:
             "id_especialidad": especialidad["id_especialidad"] if especialidad else None,
             "telefono": paciente.get("telefono"),
             "fecha_cita": cita["fecha_hora_cupo"],
-            "id_usuario": paciente["id_usuario"], 
+            "id_usuario": paciente["id_usuario"],
             "recordatorio_24h_enviado": False,
             "recordatorio_1h_enviado": False,
         }
 
-        return self.repo.upsert(supabase, payload)
+        existente = self.repo.find_one(supabase, payload)
 
+        if existente:
+            return self.repo.update(supabase, existente["id"], payload)
+
+        return self.repo.insert(supabase, payload)
 
     def eliminar_notificacion(
         self,
