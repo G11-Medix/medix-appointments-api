@@ -24,6 +24,7 @@ def create_cita(
     id_institucion: int,
     payload: CitaCreate,
     service: Annotated[CitaService, Depends(get_cita_service)] = None,
+    supabase: Client = Depends(get_supabase_client),
     supabase: Client = Depends(get_supabase_client),  
 ) -> CitaResponse:
     row = service.create_cita(
@@ -31,6 +32,7 @@ def create_cita(
         id_institucion=id_institucion,
         payload=payload,
         access_token=get_access_token_from_state(request),
+        supabase=supabase,
     )
     return CitaResponse.model_validate(row)
 
@@ -97,6 +99,7 @@ def update_cita(
     id_cita: int,
     payload: CitaUpdate,
     service: Annotated[CitaService, Depends(get_cita_service)] = None,
+    supabase: Client = Depends(get_supabase_client),
     supabase: Client = Depends(get_supabase_client),  
 ) -> CitaResponse:
     row = service.update_cita(
@@ -105,6 +108,7 @@ def update_cita(
         id_cita=id_cita,
         payload=payload,
         access_token=get_access_token_from_state(request),
+        supabase=supabase,
     )
     return CitaResponse.model_validate(row)
 
@@ -116,6 +120,7 @@ def delete_cita(
     id_cita: int,
     payload: CitaDelete,
     service: Annotated[CitaService, Depends(get_cita_service)] = None,
+    supabase: Client = Depends(get_supabase_client),
     supabase: Client = Depends(get_supabase_client),  
 ) -> CitaResponse:
     row = service.delete_cita(
@@ -124,6 +129,7 @@ def delete_cita(
         id_cita=id_cita,
         payload=payload,
         access_token=get_access_token_from_state(request),
+        supabase=supabase,
     )
     return CitaResponse.model_validate(row)
 

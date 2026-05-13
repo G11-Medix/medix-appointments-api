@@ -111,6 +111,7 @@ def auth_client(monkeypatch: pytest.MonkeyPatch) -> tuple[TestClient, str, objec
                     "longitud": -74.0721,
                     "latitud": 4.711,
                     "logo_url": "https://example.com/logo.png",
+                    "service_url": None,
                 }
             ]
 
@@ -126,6 +127,7 @@ def auth_client(monkeypatch: pytest.MonkeyPatch) -> tuple[TestClient, str, objec
                 "longitud": -74.0721,
                 "latitud": 4.711,
                 "logo_url": "https://example.com/logo.png",
+                "service_url": None,
             }
 
     class FakeEspecialidadService:
@@ -300,6 +302,7 @@ def test_api_accepts_valid_token_in_representative_endpoints(auth_client: tuple[
         "longitud": -74.0721,
         "latitud": 4.711,
         "logo_url": "https://example.com/logo.png",
+        "service_url": None,
     }
     assert especialidad_resp.json()[0] == {
         "id_especialidad": 1,

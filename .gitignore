@@ -26,3 +26,8 @@ env/
 *.svg
 *.dot
 *.puml
+
+# Diagramas y Documentación
+*.svg
+*.dot
+*.puml
