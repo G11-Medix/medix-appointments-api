@@ -22,17 +22,30 @@ class NotificacionCitaRepository:
 
 
     def insert(self, supabase: Client, payload: dict):
-        return supabase.table("notificaciones_citas").insert(payload).execute().data
+
+        response = (
+            supabase.table("notificaciones_citas")
+            .insert(payload)
+            .execute()
+        )
+
+        print("INSERT RESPONSE:", response)
+
+        return response.data
 
 
     def update(self, supabase: Client, id_row: int, payload: dict):
-        return (
+
+        response = (
             supabase.table("notificaciones_citas")
             .update(payload)
             .eq("id", id_row)
             .execute()
-            .data
         )
+
+        print("UPDATE RESPONSE:", response)
+
+        return response.data
 
     def delete(
         self,
