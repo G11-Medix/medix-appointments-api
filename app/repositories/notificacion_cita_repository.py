@@ -9,17 +9,18 @@ class NotificacionCitaRepository:
             .select("*")
             .eq("id_paciente", payload["id_paciente"])
             .eq("id_institucion", payload["id_institucion"])
-            .eq("fecha_cita", payload["fecha_cita"])
+            .eq("id_especialidad", payload["id_especialidad"])
         )
-
+        '''
         if payload["id_especialidad"] is None:
             query = query.is_("id_especialidad", "null")
         else:
             query = query.eq("id_especialidad", payload["id_especialidad"])
-
+        '''
         res = query.limit(1).execute()
+        
         return res.data[0] if res.data else None
-
+        
 
     def insert(self, supabase: Client, payload: dict):
 
