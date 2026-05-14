@@ -15,6 +15,8 @@ class NotificacionCitaService:
 
     def guardar_notificacion(self, supabase: Client, cita: dict):
 
+        print("ENTRO A GUARDAR_NOTIFICACION")
+
         paciente = self._get_paciente_local(supabase, cita)
         if not paciente:
             raise Exception("Paciente no encontrado")
@@ -38,9 +40,15 @@ class NotificacionCitaService:
         existente = self.repo.find_one(supabase, payload)
 
         if existente:
-            return self.repo.update(supabase, existente["id"], payload)
+            result = self.repo.update(supabase, existente["id"], payload)
+            print("UPDATE RESULT:", result)
+            return result
 
-        return self.repo.insert(supabase, payload)
+        result = self.repo.insert(supabase, payload)
+
+        print("INSERT RESULT:", result)
+
+        return result
 
     def eliminar_notificacion(
         self,
