@@ -66,15 +66,18 @@ class CitaService:
             access_token=access_token,
         )
 
-        self.notificacion_service.guardar_notificacion(
-            supabase,
-            {
-                **cita,
-                "id_institucion": id_institucion,
-                "tipo_documento": patient.get("tipo_documento") or payload.tipo_documento,
-                "numero_documento": patient.get("numero_documento") or payload.numero_documento,
-            }
-        )
+        try:
+            self.notificacion_service.guardar_notificacion(
+                supabase,
+                {
+                    **cita,
+                    "id_institucion": id_institucion,
+                    "tipo_documento": patient.get("tipo_documento") or payload.tipo_documento,
+                    "numero_documento": patient.get("numero_documento") or payload.numero_documento,
+                }
+            )
+        except Exception as e:
+            LOGGER.exception("ERROR GUARDANDO NOTIFICACION")
 
 
         return cita
