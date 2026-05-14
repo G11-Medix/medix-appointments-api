@@ -27,15 +27,16 @@ class NotificacionCitaService:
         especialidad = self._get_especialidad_local(supabase, cita)
 
         payload = {
-            "id_paciente": paciente["id_paciente"],
-            "id_institucion": cita["id_institucion"],
-            "id_especialidad": especialidad["id_especialidad"] if especialidad else None,
-            "telefono": paciente.get("telefono"),
-            "fecha_cita": cita["fecha_hora_cupo"],
-            "id_usuario": paciente["id_usuario"],
-            "recordatorio_24h_enviado": False,
-            "recordatorio_1h_enviado": False,
-        }
+        "id_cita": cita["id"],
+        "id_paciente": paciente["id_paciente"],
+        "id_institucion": cita["id_institucion"],
+        "id_especialidad": especialidad["id_especialidad"] if especialidad else None,
+        "telefono": paciente.get("telefono"),
+        "fecha_cita": cita["fecha_hora_cupo"],
+        "id_usuario": paciente["id_usuario"],
+        "recordatorio_24h_enviado": False,
+        "recordatorio_1h_enviado": False,
+    }
 
         existente = self.repo.find_one(supabase, payload)
 
@@ -55,19 +56,12 @@ class NotificacionCitaService:
         supabase: Client,
         cita: dict,
     ):
-        paciente = self._get_paciente_local(supabase, cita)
-
-        if not paciente:
-            raise Exception("Paciente no encontrado")
-
-        especialidad = self._get_especialidad_local(supabase, cita)
+        
 
         return self.repo.delete(
             supabase,
-            id_paciente=paciente["id_paciente"],
+            id_cita=cita["id"],
             id_institucion=cita["id_institucion"],
-            fecha_cita=cita["fecha_hora_cupo"],
-            id_especialidad=especialidad["id_especialidad"] if especialidad else None,
         )
 
     def _get_paciente_local(self, supabase: Client, cita: dict) -> dict | None:
