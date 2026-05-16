@@ -90,7 +90,7 @@ class CitaService:
         access_token: str | None = None,
         supabase: Client | None = None,
     ) -> dict[str, Any]:
-        route = self._resolve_route(id_institucion, supabase=supabase)
+        route = self._resolve_route(id_institucion)
         return self._gateway().get_appointment(route=route, id_cita=id_cita, access_token=access_token)
 
     def get_cita_ips(
