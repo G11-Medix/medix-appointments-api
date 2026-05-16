@@ -2,7 +2,7 @@ import logging
 from datetime import datetime
 from typing import Any
 
-from fastapi import HTTPException, status, Depends
+from fastapi import HTTPException, status
 from supabase import Client
 from app.db.supabase import get_supabase_client
 from app.clients.ips_client import IpsClient
@@ -47,7 +47,7 @@ class CitaService:
         id_institucion: int,
         payload: CitaCreate,
         access_token: str | None = None,
-        supabase: Client = Depends(get_supabase_client),
+       
     ) -> dict[str, Any]:
         route = self._resolve_route(id_institucion)
         patient = self._gateway().find_patient_by_document(
@@ -56,6 +56,7 @@ class CitaService:
             numero_documento=payload.numero_documento,
             access_token=access_token,
         )
+        supabase = get_supabase_client()
 
         cita = self._gateway().create_appointment(
             route=route,
@@ -295,8 +296,10 @@ class CitaService:
         id_cita: int,
         payload: CitaUpdate,
         access_token: str | None = None,
-        supabase: Client = Depends(get_supabase_client),
+        
     ) -> dict[str, Any]:
+        
+        supabase = get_supabase_client()
 
         route = self._resolve_route(id_institucion)
 
@@ -326,11 +329,11 @@ class CitaService:
         id_cita: int,
         payload: CitaDelete,
         access_token: str | None = None,
-        supabase: Client= Depends(get_supabase_client),
+        
     ) -> dict[str, Any]:
 
         route = self._resolve_route(id_institucion)
-
+        supabase = get_supabase_client()
         
         cita = self._gateway().get_appointment(
             route=route,
