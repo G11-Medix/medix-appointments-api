@@ -2,9 +2,9 @@ import logging
 from datetime import datetime
 from typing import Any
 
-from fastapi import HTTPException, status
+from fastapi import HTTPException, status, Depends
 from supabase import Client
-
+from app.db.supabase import get_supabase_client
 from app.clients.ips_client import IpsClient
 from app.core.config import Settings, get_settings
 from app.schemas.cita import CitaCreate, CitaDelete, CitaIpsResponse, CitaUpdate, CitaAppResponse
@@ -47,7 +47,7 @@ class CitaService:
         id_institucion: int,
         payload: CitaCreate,
         access_token: str | None = None,
-        supabase: Client | None = None,
+        supabase: Client = Depends(get_supabase_client),
     ) -> dict[str, Any]:
         route = self._resolve_route(id_institucion)
         patient = self._gateway().find_patient_by_document(
@@ -295,7 +295,7 @@ class CitaService:
         id_cita: int,
         payload: CitaUpdate,
         access_token: str | None = None,
-        supabase: Client | None = None,
+        supabase: Client = Depends(get_supabase_client),
     ) -> dict[str, Any]:
 
         route = self._resolve_route(id_institucion)
@@ -326,7 +326,7 @@ class CitaService:
         id_cita: int,
         payload: CitaDelete,
         access_token: str | None = None,
-        supabase: Client | None = None,
+        supabase: Client= Depends(get_supabase_client),
     ) -> dict[str, Any]:
 
         route = self._resolve_route(id_institucion)
