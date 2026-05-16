@@ -2,7 +2,7 @@ import logging
 from datetime import datetime
 from typing import Any
 
-from fastapi import HTTPException, status, Depends
+from fastapi import HTTPException, status
 from supabase import Client
 
 from app.clients.ips_client import IpsClient
@@ -14,7 +14,6 @@ from app.services.ips_route_resolver import IpsRoute, IpsRouteResolver
 from app.services.especialidad_service import EspecialidadService
 from app.services.paciente_service import PacienteService
 from app.services.recomendacion_service import RecomendacionService
-from app.db.supabase import get_supabase_client
 
 LOGGER = logging.getLogger(__name__)
 
@@ -45,7 +44,7 @@ class CitaService:
         id_institucion: int,
         payload: CitaCreate,
         access_token: str | None = None,
-        supabase: Client = Depends(get_supabase_client),
+        supabase: Client | None = None,
     ) -> dict[str, Any]:
         route = self._resolve_route(id_institucion, supabase=supabase)
         patient = self._gateway().find_patient_by_document(
@@ -282,7 +281,7 @@ class CitaService:
         id_cita: int,
         payload: CitaUpdate,
         access_token: str | None = None,
-        supabase: Client = Depends(get_supabase_client),
+        supabase: Client | None = None,
     ) -> dict[str, Any]:
         route = self._resolve_route(id_institucion, supabase=supabase)
         return self._gateway().reschedule_appointment(
@@ -298,7 +297,7 @@ class CitaService:
         id_cita: int,
         payload: CitaDelete,
         access_token: str | None = None,
-        supabase: Client = Depends(get_supabase_client),
+        supabase: Client | None = None,
     ) -> dict[str, Any]:
         route = self._resolve_route(id_institucion, supabase=supabase)
         return self._gateway().cancel_appointment(
