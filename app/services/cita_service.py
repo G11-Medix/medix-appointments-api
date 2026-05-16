@@ -100,7 +100,7 @@ class CitaService:
         id_cita: int,
         access_token: str | None = None,
     ) -> CitaIpsResponse:
-        route = self._resolve_route(id_institucion)
+        route = self._resolve_route(id_institucion, supabase=supabase)
         row = self._gateway().get_appointment(route=route, id_cita=id_cita, access_token=access_token)
         return self._build_cita_ips_response(
             route=route,
