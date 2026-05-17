@@ -20,4 +20,4 @@ http:
     ai-service:
       loadBalancer:
         servers:
-          - url: "http://localhost:8000"
+          - url: "${AI_SERVICE_URL}"
