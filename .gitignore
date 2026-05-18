@@ -21,6 +21,12 @@ env/
 # Docker
 *.log
 
+
+# Diagramas y Documentación
+*.svg
+*.dot
+*.puml
+
 # Diagramas y Documentación
 *.svg
 *.dot

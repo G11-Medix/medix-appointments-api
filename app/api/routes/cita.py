@@ -26,7 +26,7 @@ def create_cita(
     service: Annotated[CitaService, Depends(get_cita_service)] = None,
     supabase: Client = Depends(get_supabase_client),
 ) -> CitaResponse:
-    row = service.create_cita(
+    row = service.create_cita( 
         id_institucion=id_institucion,
         payload=payload,
         access_token=get_access_token_from_state(request),
@@ -118,7 +118,7 @@ def delete_cita(
     service: Annotated[CitaService, Depends(get_cita_service)] = None,
     supabase: Client = Depends(get_supabase_client),
 ) -> CitaResponse:
-    row = service.delete_cita(
+    row = service.delete_cita( 
         id_institucion=id_institucion,
         id_cita=id_cita,
         payload=payload,

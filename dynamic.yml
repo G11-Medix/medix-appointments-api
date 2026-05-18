@@ -1,0 +1,23 @@
+http:
+
+  routers:
+
+    ai:
+      rule: "PathPrefix(`/ai`)"
+      service: ai-service
+      middlewares:
+        - ai-stripprefix
+
+  middlewares:
+
+    ai-stripprefix:
+      stripPrefix:
+        prefixes:
+          - /ai
+
+  services:
+
+    ai-service:
+      loadBalancer:
+        servers:
+          - url: "${AI_SERVICE_URL}"

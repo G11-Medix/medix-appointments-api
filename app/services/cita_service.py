@@ -4,7 +4,7 @@ from typing import Any
 
 from fastapi import HTTPException, status
 from supabase import Client
-
+from app.db.supabase import get_supabase_client
 from app.clients.ips_client import IpsClient
 from app.core.config import Settings, get_settings
 from app.schemas.cita import CitaCreate, CitaDelete, CitaIpsResponse, CitaUpdate, CitaAppResponse
@@ -14,6 +14,7 @@ from app.services.ips_route_resolver import IpsRoute, IpsRouteResolver
 from app.services.especialidad_service import EspecialidadService
 from app.services.paciente_service import PacienteService
 from app.services.recomendacion_service import RecomendacionService
+from app.services.notificacion_cita_service import NotificacionCitaService
 
 LOGGER = logging.getLogger(__name__)
 
@@ -29,6 +30,7 @@ class CitaService:
         recomendacion_service: RecomendacionService | None = None,
         route_resolver: IpsRouteResolver | None = None,
         logger: logging.Logger | None = None,
+        notificacion_service: NotificacionCitaService | None = None
     ) -> None:
         self.settings = settings
         self.client = client
@@ -38,22 +40,25 @@ class CitaService:
         self.recomendacion_service = recomendacion_service or RecomendacionService()
         self.route_resolver = route_resolver or IpsRouteResolver(settings=settings)
         self.logger = logger or LOGGER
+        self.notificacion_service = notificacion_service or NotificacionCitaService()
 
     def create_cita(
         self,
         id_institucion: int,
         payload: CitaCreate,
         access_token: str | None = None,
-        supabase: Client | None = None,
+       
     ) -> dict[str, Any]:
-        route = self._resolve_route(id_institucion, supabase=supabase)
+        route = self._resolve_route(id_institucion)
         patient = self._gateway().find_patient_by_document(
             route=route,
             tipo_documento=payload.tipo_documento,
             numero_documento=payload.numero_documento,
             access_token=access_token,
         )
-        return self._gateway().create_appointment(
+        supabase = get_supabase_client()
+
+        cita = self._gateway().create_appointment(
             route=route,
             id_paciente=int(patient["id_paciente"]),
             id_prestador=payload.id_prestador,
@@ -62,6 +67,22 @@ class CitaService:
             access_token=access_token,
         )
 
+        try:
+            self.notificacion_service.guardar_notificacion(
+                supabase,
+                {
+                    **cita,
+                    "id_institucion": id_institucion,
+                    "tipo_documento": patient.get("tipo_documento") or payload.tipo_documento,
+                    "numero_documento": patient.get("numero_documento") or payload.numero_documento,
+                }
+            )
+        except Exception as e:
+            LOGGER.exception("ERROR GUARDANDO NOTIFICACION")
+
+
+        return cita
+
     def get_cita(
         self,
         id_institucion: int,
@@ -69,7 +90,7 @@ class CitaService:
         access_token: str | None = None,
         supabase: Client | None = None,
     ) -> dict[str, Any]:
-        route = self._resolve_route(id_institucion, supabase=supabase)
+        route = self._resolve_route(id_institucion)
         return self._gateway().get_appointment(route=route, id_cita=id_cita, access_token=access_token)
 
     def get_cita_ips(
@@ -136,7 +157,7 @@ class CitaService:
         access_token: str | None = None,
         supabase: Client | None = None,
     ) -> list[dict[str, Any]]:
-        route = self._resolve_route(id_institucion, supabase=supabase)
+        route = self._resolve_route(id_institucion)
         id_paciente: int | None = None
         if cedula is not None:
             patient = self._gateway().find_patient_by_document(
@@ -170,7 +191,7 @@ class CitaService:
         hasta: datetime | None = None,
         access_token: str | None = None,
     ) -> list[CitaIpsResponse]:
-        route = self._resolve_route(id_institucion, supabase=supabase)
+        route = self._resolve_route(id_institucion)
         especialidades_map = self._build_especialidades_map(supabase)
         rows = self.list_citas(
             id_institucion=id_institucion,
@@ -208,7 +229,7 @@ class CitaService:
                 if not id_institucion:
                     self.logger.warning("Institucion sin id valido en listado de citas: %s", inst)
                     continue
-                route = self._resolve_route(id_institucion, supabase=supabase)
+                route = self._resolve_route(id_institucion)
                 response = self._gateway().list_appointments(
                     route=route,
                     id_paciente=id_paciente,
@@ -276,39 +297,99 @@ class CitaService:
         ]
 
     def update_cita(
-        self,
+        self, 
         id_institucion: int,
         id_cita: int,
         payload: CitaUpdate,
         access_token: str | None = None,
-        supabase: Client | None = None,
+        
     ) -> dict[str, Any]:
-        route = self._resolve_route(id_institucion, supabase=supabase)
-        return self._gateway().reschedule_appointment(
+        
+        supabase = get_supabase_client()
+
+        route = self._resolve_route(id_institucion)
+
+        cita_actualizada = self._gateway().reschedule_appointment(
             route=route,
             id_cita=id_cita,
             nueva_fecha_hora_cupo=payload.nueva_fecha_hora_cupo,
             access_token=access_token,
         )
 
+        cita_actualizada = self._enrich_cita_with_patient_document(
+            route=route,
+            cita=cita_actualizada,
+            access_token=access_token,
+        )
+        
+        self.notificacion_service.guardar_notificacion(
+            supabase,
+            {**cita_actualizada, "id_institucion": id_institucion}
+        )
+
+        return cita_actualizada
+
     def delete_cita(
-        self,
+        self, 
         id_institucion: int,
         id_cita: int,
         payload: CitaDelete,
         access_token: str | None = None,
-        supabase: Client | None = None,
+        
     ) -> dict[str, Any]:
-        route = self._resolve_route(id_institucion, supabase=supabase)
-        return self._gateway().cancel_appointment(
+
+        route = self._resolve_route(id_institucion)
+        supabase = get_supabase_client()
+        
+        cita = self._gateway().get_appointment(
+            route=route,
+            id_cita=id_cita,
+            access_token=access_token,
+        )
+        cita = self._enrich_cita_with_patient_document(
+            route=route,
+            cita=cita,
+            access_token=access_token,
+        )
+
+        result = self._gateway().cancel_appointment(
             route=route,
             id_cita=id_cita,
             motivo=payload.motivo,
             access_token=access_token,
         )
 
-    def _resolve_route(self, id_institucion: int, supabase: Client | None = None) -> IpsRoute:
-        return self.route_resolver.get_route(id_institucion, supabase=supabase)
+        
+        self.notificacion_service.eliminar_notificacion(
+            supabase,
+            {**cita, "id_institucion": id_institucion}
+        )
+
+        return result
+
+    def _resolve_route(self, id_institucion: int) -> IpsRoute:
+        return self.route_resolver.get_route(id_institucion)
+
+    def _enrich_cita_with_patient_document(
+        self,
+        *,
+        route: IpsRoute,
+        cita: dict[str, Any],
+        access_token: str | None = None,
+    ) -> dict[str, Any]:
+        if cita.get("tipo_documento") and cita.get("numero_documento"):
+            return cita
+
+        patient = self._gateway().get_patient(
+            route=route,
+            id_paciente=int(cita["id_paciente"]),
+            access_token=access_token,
+        )
+        return {
+            **cita,
+            "tipo_documento": patient.get("tipo_documento"),
+            "numero_documento": patient.get("numero_documento"),
+        }
 
     def _settings(self) -> Settings:
         if self.settings is None:
@@ -399,6 +480,58 @@ class CitaService:
             fecha_creacion=_parse_optional_datetime(row.get("fecha_creacion")) or fecha_hora,
             fecha_actualizacion=_parse_optional_datetime(row.get("fecha_actualizacion")) or fecha_hora,
         )
+    
+    def delete_cita_magic(
+        self,
+        *,
+        supabase: Client,
+        id_institucion: int,
+        id_cita: int,
+        motivo: str,
+        numero_documento: str,
+        tipo_documento: str,
+    ):
+
+        route = self._resolve_route(
+            id_institucion
+        )
+
+        patient = self._gateway().find_patient_by_document(
+            route=route,
+            tipo_documento=tipo_documento,
+            numero_documento=numero_documento,
+            access_token=None
+        )
+
+        cita = self._gateway().get_appointment(
+            route=route,
+            id_cita=id_cita,
+            access_token=None
+        )
+
+        if int(cita["id_paciente"]) != int(patient["id_paciente"]):
+
+            raise HTTPException(
+                status_code=403,
+                detail="La cita no pertenece al usuario"
+            )
+
+        result = self._gateway().cancel_appointment(
+            route=route,
+            id_cita=id_cita,
+            motivo=motivo,
+            access_token=None
+        )
+
+        self.notificacion_service.eliminar_notificacion(
+            supabase,
+            {
+                **cita,
+                "id_institucion": id_institucion
+            }
+        )
+
+        return result
 
     def _get_patient_for_appointment(
         self,
@@ -457,7 +590,7 @@ class CitaService:
                 if not id_institucion:
                     self.logger.warning("Institucion sin id valido en listado de citas: %s", inst)
                     continue
-                route = self._resolve_route(id_institucion, supabase=supabase)
+                route = self._resolve_route(id_institucion)
                 patient = self._gateway().find_patient_by_document(
                     route=route,
                     tipo_documento=tipo_documento,
