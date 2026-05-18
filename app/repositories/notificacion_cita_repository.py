@@ -4,7 +4,6 @@ from supabase import Client
 class NotificacionCitaRepository:
 
     def find_one(self, supabase: Client, payload: dict):
-
         res = (
             supabase.table("notificaciones_citas")
             .select("*")
@@ -15,31 +14,23 @@ class NotificacionCitaRepository:
         )
 
         return res.data[0] if res.data else None
-            
 
     def insert(self, supabase: Client, payload: dict):
-
         response = (
             supabase.table("notificaciones_citas")
             .insert(payload)
             .execute()
         )
 
-        print("INSERT RESPONSE:", response)
-
         return response.data
 
-
     def update(self, supabase: Client, id_row: int, payload: dict):
-
         response = (
             supabase.table("notificaciones_citas")
             .update(payload)
             .eq("id", id_row)
             .execute()
         )
-
-        print("UPDATE RESPONSE:", response)
 
         return response.data
 

@@ -1,9 +1,12 @@
+import logging
+
 from supabase import Client
-from fastapi import HTTPException, status
 
 from app.repositories.notificacion_cita_repository import NotificacionCitaRepository
 from app.repositories.paciente_repository import PacienteRepository
 from app.repositories.especialidad_repository import EspecialidadRepository
+
+LOGGER = logging.getLogger(__name__)
 
 
 class NotificacionCitaService:
@@ -14,9 +17,6 @@ class NotificacionCitaService:
         self.especialidad_repo = EspecialidadRepository()
 
     def guardar_notificacion(self, supabase: Client, cita: dict):
-
-        print("ENTRO A GUARDAR_NOTIFICACION")
-
         paciente = self._get_paciente_local(supabase, cita)
         if not paciente:
             raise Exception("Paciente no encontrado")
@@ -27,28 +27,26 @@ class NotificacionCitaService:
         especialidad = self._get_especialidad_local(supabase, cita)
 
         payload = {
-        "id_cita": cita["id"],
-        "id_paciente": paciente["id_paciente"],
-        "id_institucion": cita["id_institucion"],
-        "id_especialidad": especialidad["id_especialidad"] if especialidad else None,
-        "telefono": paciente.get("telefono"),
-        "fecha_cita": cita["fecha_hora_cupo"],
-        "id_usuario": paciente["id_usuario"],
-        "recordatorio_24h_enviado": False,
-        "recordatorio_1h_enviado": False,
-    }
+            "id_cita": cita["id"],
+            "id_paciente": paciente["id_paciente"],
+            "id_institucion": cita["id_institucion"],
+            "id_especialidad": especialidad["id_especialidad"] if especialidad else None,
+            "telefono": paciente.get("telefono"),
+            "fecha_cita": cita["fecha_hora_cupo"],
+            "id_usuario": paciente["id_usuario"],
+            "recordatorio_24h_enviado": False,
+            "recordatorio_1h_enviado": False,
+        }
 
         existente = self.repo.find_one(supabase, payload)
 
         if existente:
             result = self.repo.update(supabase, existente["id"], payload)
-            print("UPDATE RESULT:", result)
+            LOGGER.debug("Notificacion de cita actualizada: %s", result)
             return result
 
         result = self.repo.insert(supabase, payload)
-
-        print("INSERT RESULT:", result)
-
+        LOGGER.debug("Notificacion de cita creada: %s", result)
         return result
 
     def eliminar_notificacion(
@@ -56,8 +54,6 @@ class NotificacionCitaService:
         supabase: Client,
         cita: dict,
     ):
-        
-
         return self.repo.delete(
             supabase,
             id_cita=cita["id"],

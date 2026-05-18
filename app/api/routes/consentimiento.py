@@ -19,7 +19,6 @@ def get_consent_service() -> ConsentimientoService:
     return ConsentimientoService()
 
 
-# 🔹 1. Obtener documento activo
 @router.get("/activo", response_model=DocumentoLegalResponse)
 def get_documento_activo(
     service: Annotated[ConsentimientoService, Depends(get_consent_service)],
@@ -31,7 +30,6 @@ def get_documento_activo(
     return doc
 
 
-# 🔹 2. Verificar si aceptó
 @router.get("/estado", response_model=ConsentStatusResponse)
 def has_accepted(
     auth_user=Depends(require_authenticated_token_user),
@@ -58,7 +56,7 @@ def aceptar_documento(
     success = service.aceptar_documento(
         supabase=supabase,
         user_id=user_id,
-        payload=payload,  # ✅ pasas el objeto completo
+        payload=payload,
         ip=request.client.host if request.client else None,
     )
 
