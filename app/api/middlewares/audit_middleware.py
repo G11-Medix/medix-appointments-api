@@ -29,7 +29,10 @@ def build_audit_middleware(supabase: Client) -> Callable:
             status_code = response.status_code
             resultado = "EXITO" if status_code < 400 else "ERROR"
             detalle = service.build_detail(status_code=status_code, path=path, query=query)
-            id_usuario = service.get_authenticated_user_id(request)
+            id_usuario = service.get_authenticated_user_id(
+                request,
+                allow_token_user_id=status_code < 400,
+            )
 
             try:
                 service.record(

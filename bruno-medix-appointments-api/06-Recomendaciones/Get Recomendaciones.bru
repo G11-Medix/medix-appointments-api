@@ -1,0 +1,19 @@
+meta {
+  name: Get Recomendaciones
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{API_URL}}{{API_PREFIX}}/recomendaciones/?institucion_id={{ID_INSTITUCION}}&especialidad_id={{ID_ESPECIALIDAD}}&activa=true&limit=20
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{ACCESS_TOKEN}}
+}
+
+docs {
+  Lista recomendaciones. Los filtros `institucion_id`, `especialidad_id`, `activa` y `limit` son opcionales.
+}

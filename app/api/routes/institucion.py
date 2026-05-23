@@ -10,7 +10,7 @@ from app.api.routes.assistant import get_assistant_service
 from app.schemas.assistant import AssistantAvailabilityResponse, AssistantInstitutionResponse
 from app.db.supabase import get_supabase_client
 from app.schemas.especialidad import EspecialidadResponse
-from app.schemas.institucion import InstitucionResponse
+from app.schemas.institucion import InstitucionHealthResponse, InstitucionResponse, InstitucionUpdate
 from app.services.assistant_appointments_service import AssistantAppointmentsService
 from app.services.eps_service import EpsService
 from app.services.institucion_service import InstitucionService
@@ -47,6 +47,7 @@ def list_instituciones(
         rows = assistant_service.list_instituciones_by_especialidad(
             codigo_reps,
             access_token=get_access_token_from_state(request),
+            supabase=supabase,
         )
         if id_paciente is None:
             return rows
@@ -89,6 +90,7 @@ def get_disponibilidad(
     fecha_desde: date = Query(...),
     dias: int = Query(..., ge=1),
     assistant_service: Annotated[AssistantAppointmentsService, Depends(get_assistant_service)] = None,
+    supabase: Client = Depends(get_supabase_client),
 ) -> AssistantAvailabilityResponse:
     return assistant_service.get_disponibilidad(
         id_institucion=id_institucion,
@@ -96,7 +98,38 @@ def get_disponibilidad(
         fecha_desde=fecha_desde,
         dias=dias,
         access_token=get_access_token_from_state(request),
+        supabase=supabase,
     )
+
+
+@router.put("/{id_institucion}", response_model=InstitucionResponse)
+def update_institucion(
+    id_institucion: int,
+    payload: InstitucionUpdate,
+    service: Annotated[InstitucionService, Depends(get_institucion_service)] = None,
+    supabase: Client = Depends(get_supabase_client),
+) -> InstitucionResponse:
+    row = service.update_institucion(
+        supabase=supabase,
+        id_institucion=id_institucion,
+        payload=payload,
+    )
+    if not row:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Institucion no encontrada")
+
+    return InstitucionResponse.model_validate(row)
+
+
+@router.get("/{id_institucion}/health", response_model=InstitucionHealthResponse)
+def check_institucion_health(
+    id_institucion: int,
+    service: Annotated[InstitucionService, Depends(get_institucion_service)] = None,
+    supabase: Client = Depends(get_supabase_client),
+) -> InstitucionHealthResponse:
+    response = service.check_health(supabase=supabase, id_institucion=id_institucion)
+    if response is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Institucion no encontrada")
+    return response
 
 
 @router.get("/{id_institucion}/especialidades", response_model=list[EspecialidadResponse])

@@ -28,6 +28,23 @@ class PacienteRepository:
         data = response.data or []
         return data[0] if data else None
 
+    def get_by_document(
+        self,
+        supabase: Client,
+        tipo_documento: str,
+        numero_documento: str,
+    ) -> dict | None:
+        response = (
+            supabase.table("Paciente")
+            .select(self._select_fields)
+            .eq("tipo_documento", tipo_documento)
+            .eq("numero_documento", numero_documento)
+            .limit(1)
+            .execute()
+        )
+        data = response.data or []
+        return data[0] if data else None
+
     def create(self, supabase: Client, payload: dict) -> dict:
         response = (
             supabase.table("Paciente")

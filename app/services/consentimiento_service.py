@@ -12,11 +12,9 @@ class ConsentimientoService:
     ) -> None:
         self.repository = repository or ConsentimientoRepository()
 
-    # 🔹 Obtener documento activo
     def get_documento_activo(self, supabase: Client) -> dict | None:
         return self.repository.get_documento_activo(supabase=supabase)
 
-    # 🔹 Verificar si aceptó
     def has_accepted_latest(
         self,
         supabase: Client,
@@ -46,7 +44,7 @@ class ConsentimientoService:
 
         data = {
             "id_usuario": user_id,
-            "id_documento": documento["id_documento"],  # 🔥 backend manda
+            "id_documento": documento["id_documento"],
             "dispositivo": payload.dispositivo,
             "ip": ip,
         }

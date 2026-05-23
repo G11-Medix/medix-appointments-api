@@ -1,21 +1,101 @@
 services:
+
+  traefik:
+    image: traefik:v3.0
+
+    container_name: medix_gateway
+
+    env_file:
+      - ./.env
+
+    environment:
+      AI_SERVICE_URL: ${AI_SERVICE_URL}
+
+    command:
+      - "--api.dashboard=true"
+      - "--providers.docker=true"
+      - "--providers.file.filename=/etc/traefik/dynamic.yml"
+      - "--entrypoints.web.address=:80"
+
+    ports:
+      - "80:80"
+      - "8080:8080"
+
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./dynamic.yml:/etc/traefik/dynamic.yml:ro
+
+    networks:
+      - medix_gateway
+
+    restart: unless-stopped
+
+
+  nats:
+    image: nats:2.10-alpine
+
+    container_name: medix_nats
+
+    command: ["-m", "8222"]
+
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+
+    networks:
+      - medix_net
+
+    restart: unless-stopped
+
+
   medix_appointments_api:
     build:
       context: .
       dockerfile: Dockerfile
+
     container_name: medix_appointments_api
+
     env_file:
       - ./.env
+
     environment:
       IPS_ROUTES_JSON: >-
         {"2":{"base_url":"http://ips_santa_fe:4011","api_key":"ips-fsf-key"},"3":{"base_url":"http://ips_country:4012","api_key":"ips-cly-key"},"4":{"base_url":"http://ips_clinica_colombia:4013","api_key":"ips-cuc-key"},"5":{"base_url":"http://ips_san_ignacio:4014","api_key":"ips-hsi-key"},"6":{"base_url":"http://ips_mederi:4015","api_key":"ips-med-key"}}
+
       IPS_TIMEOUT_SECONDS: "10"
+      NATS_ENABLED: "true"
+      NATS_URL: nats://nats:4222
+      NATS_CONNECT_MAX_ATTEMPTS: "30"
+      NATS_CONNECT_RETRY_DELAY_SECONDS: "1"
+
     ports:
       - "8001:8001"
+
+    labels:
+      - "traefik.enable=true"
+
+      - "traefik.http.routers.appointments.rule=PathPrefix(`/appointments`)"
+
+      - "traefik.http.services.appointments.loadbalancer.server.port=8001"
+
+      - "traefik.http.middlewares.appointments-stripprefix.stripprefix.prefixes=/appointments"
+
+      - "traefik.http.routers.appointments.middlewares=appointments-stripprefix"
+
+    depends_on:
+      - nats
+
     networks:
       - medix_net
+      - medix_gateway
+
+    restart: unless-stopped
+
 
 networks:
+
   medix_net:
-    name: medix_net
+    external: true
+
+  medix_gateway:
     external: true

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from postgrest.exceptions import APIError
 from supabase import Client
 
 
@@ -44,6 +45,19 @@ class EpsRepository:
         if not institucion_ids:
             return []
 
+        try:
+            response = (
+                supabase.table("Institucion")
+                .select("id_institucion,nombre,nit,direccion,telefono,estado,longitud,latitud,logo_url,service_url")
+                .in_("id_institucion", institucion_ids)
+                .order("id_institucion")
+                .execute()
+            )
+            return response.data or []
+        except APIError as exc:
+            if not _is_missing_service_url_error(exc):
+                raise
+
         response = (
             supabase.table("Institucion")
             .select("id_institucion,nombre,nit,direccion,telefono,estado,longitud,latitud,logo_url")
@@ -51,4 +65,9 @@ class EpsRepository:
             .order("id_institucion")
             .execute()
         )
-        return response.data or []
+        return [{**row, "service_url": None} for row in response.data or []]
+
+
+def _is_missing_service_url_error(error: APIError) -> bool:
+    error_text = str(error)
+    return "service_url" in error_text and ("42703" in error_text or "does not exist" in error_text)

@@ -7,7 +7,7 @@ from app.api.dependencies.auth import get_access_token_from_state
 from supabase import Client
 
 from app.db.supabase import get_supabase_client
-from app.schemas.cita import CitaAppResponse, CitaConfirmacionResponse, CitaCreate, CitaDelete, CitaResponse, CitaUpdate
+from app.schemas.cita import CitaAppResponse, CitaConfirmacionResponse, CitaCreate, CitaDelete, CitaIpsResponse, CitaResponse, CitaUpdate
 from app.services.cita_service import CitaService
 
 router = APIRouter(prefix="/instituciones/{id_institucion}/citas", tags=["Citas"])
@@ -24,28 +24,31 @@ def create_cita(
     id_institucion: int,
     payload: CitaCreate,
     service: Annotated[CitaService, Depends(get_cita_service)] = None,
+    supabase: Client = Depends(get_supabase_client),
 ) -> CitaResponse:
     row = service.create_cita(
         id_institucion=id_institucion,
         payload=payload,
         access_token=get_access_token_from_state(request),
+        supabase=supabase,
     )
     return CitaResponse.model_validate(row)
 
 
-@router.get("/{id_cita}", response_model=CitaResponse)
+@router.get("/{id_cita}", response_model=CitaIpsResponse)
 def get_cita(
     request: Request,
     id_institucion: int,
     id_cita: int,
     service: Annotated[CitaService, Depends(get_cita_service)] = None,
-) -> CitaResponse:
-    row = service.get_cita(
+    supabase: Client = Depends(get_supabase_client),
+) -> CitaIpsResponse:
+    return service.get_cita_ips(
+        supabase=supabase,
         id_institucion=id_institucion,
         id_cita=id_cita,
         access_token=get_access_token_from_state(request),
     )
-    return CitaResponse.model_validate(row)
 
 
 @router.get("/{id_cita}/confirmacion", response_model=CitaConfirmacionResponse)
@@ -65,7 +68,7 @@ def get_cita_confirmacion(
     return CitaConfirmacionResponse.model_validate(row)
 
 
-@router.get("/", response_model=list[CitaResponse])
+@router.get("/", response_model=list[CitaIpsResponse])
 def list_citas(
     request: Request,
     id_institucion: int,
@@ -74,8 +77,10 @@ def list_citas(
     desde: datetime | None = Query(default=None),
     hasta: datetime | None = Query(default=None),
     service: Annotated[CitaService, Depends(get_cita_service)] = None,
-) -> list[CitaResponse]:
-    rows = service.list_citas(
+    supabase: Client = Depends(get_supabase_client),
+) -> list[CitaIpsResponse]:
+    return service.list_citas_ips(
+        supabase=supabase,
         id_institucion=id_institucion,
         tipo_documento=tipo_documento,
         cedula=cedula,
@@ -83,7 +88,6 @@ def list_citas(
         hasta=hasta,
         access_token=get_access_token_from_state(request),
     )
-    return [CitaResponse.model_validate(row) for row in rows]
 
 
 @router.put("/{id_cita}", response_model=CitaResponse)
@@ -93,12 +97,14 @@ def update_cita(
     id_cita: int,
     payload: CitaUpdate,
     service: Annotated[CitaService, Depends(get_cita_service)] = None,
+    supabase: Client = Depends(get_supabase_client),
 ) -> CitaResponse:
     row = service.update_cita(
         id_institucion=id_institucion,
         id_cita=id_cita,
         payload=payload,
         access_token=get_access_token_from_state(request),
+        supabase=supabase,
     )
     return CitaResponse.model_validate(row)
 
@@ -110,26 +116,17 @@ def delete_cita(
     id_cita: int,
     payload: CitaDelete,
     service: Annotated[CitaService, Depends(get_cita_service)] = None,
+    supabase: Client = Depends(get_supabase_client),
 ) -> CitaResponse:
     row = service.delete_cita(
         id_institucion=id_institucion,
         id_cita=id_cita,
         payload=payload,
         access_token=get_access_token_from_state(request),
+        supabase=supabase,
     )
     return CitaResponse.model_validate(row)
 
-
-# @patient_router.get("/{id_paciente}/citas", response_model=list[CitaAppResponse])
-# def get_all_citas_by_paciente(
-#     id_paciente: int,
-#     service: Annotated[CitaService, Depends(get_cita_service)] = None,
-#     supabase: Client = Depends(get_supabase_client),
-# ) -> list[CitaAppResponse]:
-#     return service.list_citas_app_by_paciente(
-#         supabase=supabase,
-#         id_paciente=id_paciente,
-#     )
 
 @patient_router.get("/{id_paciente}/citas", response_model=list[CitaAppResponse])
 def get_all_citas_by_paciente(

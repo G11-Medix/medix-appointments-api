@@ -22,11 +22,29 @@ def _cita_response(estado: str = "scheduled") -> dict:
     }
 
 
+def _cita_ips_response(estado: str = "scheduled") -> dict:
+    return {
+        "id": 10,
+        "nombre_paciente": "Ana Ruiz",
+        "cedula_paciente": "123",
+        "id_prestador": 1,
+        "nombre_prestador": "Dr. Juan Perez",
+        "especialidad": "Cardiologia",
+        "fecha": "2026-04-01",
+        "hora": "08:00:00",
+        "estado_cita": estado,
+        "motivo_cancelacion": None if estado != "cancelled" else "Paciente no asiste",
+        "fecha_creacion": "2026-03-31T10:00:00",
+        "fecha_actualizacion": "2026-03-31T10:00:00",
+    }
+
+
 @pytest.fixture
 def client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
     class FakeCitaService:
-        def create_cita(self, id_institucion: int, payload, access_token: str | None = None):  # noqa: ANN001
+        def create_cita(self, id_institucion: int, payload, access_token: str | None = None, supabase=None):  # noqa: ANN001
             assert id_institucion == 1
+            assert supabase is not None
             assert payload.tipo_documento == "CC"
             assert payload.numero_documento == "123"
             assert str(payload.fecha) == "2026-04-01"
@@ -39,6 +57,14 @@ def client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
                 raise HTTPException(status_code=404, detail="Cita no encontrada")
             assert access_token == "ok-token"
             return _cita_response()
+
+        def get_cita_ips(self, supabase, id_institucion: int, id_cita: int, access_token: str | None = None):  # noqa: ANN001
+            if id_cita == 404:
+                raise HTTPException(status_code=404, detail="Cita no encontrada")
+            assert supabase is not None
+            assert id_institucion == 1
+            assert access_token == "ok-token"
+            return _cita_ips_response()
 
         def get_cita_confirmacion(self, supabase, id_institucion: int, id_cita: int, access_token: str | None = None):  # noqa: ANN001
             assert supabase is not None
@@ -53,6 +79,16 @@ def client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
                 "latitud": 4.7110,
                 "longitud": -74.0721,
                 "estado": "scheduled",
+                "recomendacion": {
+                    "id": 1,
+                    "created_at": "2026-04-01T10:00:00+00:00",
+                    "institucion_id": 1,
+                    "especialidad_id": 1,
+                    "codigo": "CARDIO-PREP",
+                    "recomendaciones": "Llegar 20 minutos antes. Traer documento de identidad.",
+                    "prioridad": 2,
+                    "activa": True,
+                },
             }
 
         def list_citas(self, id_institucion: int, *, tipo_documento=None, cedula=None, desde=None, hasta=None, access_token: str | None = None):  # noqa: ANN001
@@ -64,20 +100,32 @@ def client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
             assert access_token == "ok-token"
             return [_cita_response()]
 
-        def update_cita(self, id_institucion: int, id_cita: int, payload, access_token: str | None = None):  # noqa: ANN001
+        def list_citas_ips(self, supabase, id_institucion: int, *, tipo_documento=None, cedula=None, desde=None, hasta=None, access_token: str | None = None):  # noqa: ANN001
+            assert supabase is not None
+            assert id_institucion == 1
+            assert tipo_documento == "CC"
+            assert cedula == "123"
+            assert isinstance(desde, datetime)
+            assert isinstance(hasta, datetime)
+            assert access_token == "ok-token"
+            return [_cita_ips_response()]
+
+        def update_cita(self, id_institucion: int, id_cita: int, payload, access_token: str | None = None, supabase=None):  # noqa: ANN001
             if id_cita == 409:
                 raise HTTPException(status_code=409, detail="Solo las citas programadas pueden reprogramarse")
             assert id_institucion == 1
+            assert supabase is not None
             assert payload.nueva_fecha_hora_cupo
             assert access_token == "ok-token"
             return _cita_response()
 
-        def delete_cita(self, id_institucion: int, id_cita: int, payload, access_token: str | None = None):  # noqa: ANN001
+        def delete_cita(self, id_institucion: int, id_cita: int, payload, access_token: str | None = None, supabase=None):  # noqa: ANN001
             if id_cita == 502:
                 raise HTTPException(status_code=502, detail="No fue posible conectar con la IPS")
             if id_cita == 504:
                 raise HTTPException(status_code=504, detail="Timeout al consultar IPS")
             assert id_institucion == 1
+            assert supabase is not None
             assert payload.motivo is not None
             assert access_token == "ok-token"
             return _cita_response(estado="cancelled")
@@ -91,6 +139,7 @@ def client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
                     "id": 10,
                     "id_institucion": 1,
                     "nombre_institucion": "Clinica Central",
+                    "logo_url": "https://example.com/clinica-central.png",
                     "especialidad": "Medicina general",
                     "estado": "scheduled",
                     "fecha": "2026-04-01",
@@ -122,17 +171,19 @@ def test_cita_crud_happy_path(client: TestClient) -> None:
 
     get_resp = client.get("/api/instituciones/1/citas/10")
     assert get_resp.status_code == 200
+    assert get_resp.json() == _cita_ips_response()
 
     confirmation_resp = client.get("/api/instituciones/1/citas/10/confirmacion")
     assert confirmation_resp.status_code == 200
     assert confirmation_resp.json()["doctor"] == "Dr. Juan Perez"
+    assert confirmation_resp.json()["recomendacion"]["codigo"] == "CARDIO-PREP"
 
     list_resp = client.get(
         "/api/instituciones/1/citas/",
         params={"tipo_documento": "CC", "cedula": "123", "desde": "2026-04-01T00:00:00", "hasta": "2026-04-30T23:59:59"},
     )
     assert list_resp.status_code == 200
-    assert len(list_resp.json()) == 1
+    assert list_resp.json() == [_cita_ips_response()]
 
     update_resp = client.put(
         "/api/instituciones/1/citas/10",
@@ -185,6 +236,7 @@ def test_patient_citas_route_passes_access_token(client: TestClient) -> None:
             "id": 10,
             "id_institucion": 1,
             "nombre_ins": "Clinica Central",
+            "logo_url": "https://example.com/clinica-central.png",
             "especialidad": "Medicina general",
             "estado": "scheduled",
             "fecha": "2026-04-01",

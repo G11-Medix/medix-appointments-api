@@ -140,7 +140,7 @@ def appointment_to_legacy(resource: dict[str, Any]) -> dict[str, Any]:
             practitioner_id = int(resource_id(reference, "Practitioner"))
             practitioner_name = str(actor.get("display") or "") or None
 
-    specialty_id, _specialty_name = specialty_from_codeable_concepts(resource.get("specialty") or [])
+    specialty_id, specialty_name = specialty_from_codeable_concepts(resource.get("specialty") or [])
     cancellation_reason = resource.get("cancelationReason") or {}
     created_at = resource.get("created") or "1970-01-01T00:00:00"
     updated_at = resource.get("meta", {}).get("lastUpdated") or created_at
@@ -151,6 +151,7 @@ def appointment_to_legacy(resource: dict[str, Any]) -> dict[str, Any]:
         "id_prestador": int(practitioner_id or 0),
         "nombre_prestador": practitioner_name,
         "id_especialidad": int(specialty_id or 0),
+        "nombre_especialidad": specialty_name,
         "fecha_hora_cupo": resource.get("start"),
         "estado": "scheduled" if status == "booked" else status,
         "motivo_cancelacion": cancellation_reason.get("text"),

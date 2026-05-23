@@ -2,6 +2,7 @@ from datetime import date, datetime
 from typing import Any
 
 from fastapi import HTTPException, status
+from supabase import Client
 
 from app.clients.ips_client import IpsClient
 from app.core.config import Settings, get_settings
@@ -34,11 +35,11 @@ class IpsMockGateway:
         self.settings = settings
         self.route_resolver = route_resolver or IpsRouteResolver(settings=settings)
 
-    def list_routes(self) -> list[IpsRoute]:
-        return self.route_resolver.list_routes()
+    def list_routes(self, supabase: Client | None = None) -> list[IpsRoute]:
+        return self.route_resolver.list_routes(supabase=supabase)
 
-    def get_route(self, id_institucion: int) -> IpsRoute:
-        return self.route_resolver.get_route(id_institucion)
+    def get_route(self, id_institucion: int, supabase: Client | None = None) -> IpsRoute:
+        return self.route_resolver.get_route(id_institucion, supabase=supabase)
 
     def list_specialties(self, route: IpsRoute, access_token: str | None = None) -> list[dict[str, Any]]:
         response = self._client().request(
@@ -181,6 +182,15 @@ class IpsMockGateway:
         if not patient_resources:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Paciente no encontrado")
         return patient_to_legacy(patient_resources[0])
+
+    def get_patient(self, route: IpsRoute, id_paciente: int, access_token: str | None = None) -> dict[str, Any]:
+        response = self._client().request(
+            method="GET",
+            base_url=route.base_url,
+            path=f"/fhir/Patient/{id_paciente}",
+            extra_headers=fhir_headers(),
+        )
+        return patient_to_legacy(response) if isinstance(response, dict) else {}
 
     def get_appointment(self, route: IpsRoute, id_cita: int, access_token: str | None = None) -> dict[str, Any]:
         response = self._client().request(

@@ -58,9 +58,10 @@ class FakeEspecialidadService:
 
 
 class FakeAssistantService:
-    def list_instituciones_by_especialidad(self, codigo_reps: int, access_token: str | None = None):
+    def list_instituciones_by_especialidad(self, codigo_reps: int, access_token: str | None = None, supabase=None):  # noqa: ANN001
         assert codigo_reps == 302
         assert access_token == "ok-token"
+        assert supabase is not None
         return [
             {"id_institucion": 1, "nombre": "IPS Demo", "estado": "ACTIVA", "especialidades": [302]},
             {"id_institucion": 2, "nombre": "IPS Aliada", "estado": "ACTIVA", "especialidades": [302]},
@@ -73,9 +74,11 @@ class FakeAssistantService:
         fecha_desde: date,
         dias: int,
         access_token: str | None = None,
+        supabase=None,  # noqa: ANN001
     ):
         assert (id_institucion, codigo_reps, fecha_desde, dias) == (1, 302, date(2026, 4, 10), 7)
         assert access_token == "ok-token"
+        assert supabase is not None
         return {
             "id_institucion": 1,
             "nombre_institucion": "IPS Demo",

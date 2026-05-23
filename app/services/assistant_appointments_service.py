@@ -3,6 +3,7 @@ from datetime import date, datetime, timedelta
 from typing import Any
 
 from fastapi import HTTPException, status
+from supabase import Client
 
 from app.schemas.assistant import (
     AssistantAvailabilityDay,
@@ -20,9 +21,13 @@ class AssistantAppointmentsService:
     def __init__(self, gateway: IpsMockGateway | None = None) -> None:
         self.gateway = gateway or IpsMockGateway()
 
-    def list_specialties(self, access_token: str | None = None) -> list[AssistantSpecialtyResponse]:
+    def list_specialties(
+        self,
+        access_token: str | None = None,
+        supabase: Client | None = None,
+    ) -> list[AssistantSpecialtyResponse]:
         by_id: dict[int, AssistantSpecialtyResponse] = {}
-        for route in self.gateway.list_routes():
+        for route in self._list_routes(supabase=supabase):
             for row in self.gateway.list_specialties(route, access_token=access_token):
                 specialty_id = int(row["id"])
                 if specialty_id not in by_id:
@@ -36,9 +41,10 @@ class AssistantAppointmentsService:
         self,
         codigo_reps: int,
         access_token: str | None = None,
+        supabase: Client | None = None,
     ) -> list[AssistantInstitutionResponse]:
         instituciones: list[AssistantInstitutionResponse] = []
-        for route in self.gateway.list_routes():
+        for route in self._list_routes(supabase=supabase):
             providers = self.gateway.list_providers(route, id_especialidad=codigo_reps, access_token=access_token)
             if not providers:
                 continue
@@ -61,11 +67,12 @@ class AssistantAppointmentsService:
         fecha_desde: date,
         dias: int,
         access_token: str | None = None,
+        supabase: Client | None = None,
     ) -> AssistantAvailabilityResponse:
         if dias < 1:
             raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="dias debe ser mayor a 0")
 
-        route = self.gateway.get_route(id_institucion)
+        route = self._get_route(id_institucion, supabase=supabase)
         current_ips = self.gateway.get_current_ips(route, access_token=access_token)
         provider_rows = self.gateway.list_providers(route, id_especialidad=codigo_reps, access_token=access_token)
         provider_names = {int(row["id"]): str(row["nombre_completo"]) for row in provider_rows}
@@ -109,8 +116,9 @@ class AssistantAppointmentsService:
         tipo_documento: str,
         numero_documento: str,
         access_token: str | None = None,
+        supabase: Client | None = None,
     ) -> AssistantPatientResponse:
-        for route in self.gateway.list_routes():
+        for route in self._list_routes(supabase=supabase):
             try:
                 row = self.gateway.find_patient_by_document(
                     route,
@@ -124,6 +132,16 @@ class AssistantAppointmentsService:
                     continue
                 raise
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Paciente no encontrado")
+
+    def _list_routes(self, supabase: Client | None = None) -> list[IpsRoute]:
+        if supabase is None:
+            return self.gateway.list_routes()
+        return self.gateway.list_routes(supabase=supabase)
+
+    def _get_route(self, id_institucion: int, supabase: Client | None = None) -> IpsRoute:
+        if supabase is None:
+            return self.gateway.get_route(id_institucion)
+        return self.gateway.get_route(id_institucion, supabase=supabase)
 
 def _parse_datetime(value: Any) -> datetime:
     if isinstance(value, datetime):

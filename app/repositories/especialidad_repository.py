@@ -11,4 +11,15 @@ class EspecialidadRepository:
             .execute()
         )
         return response.data or []
+
+    def get_by_codigo_reps(self, supabase: Client, codigo_reps: int) -> dict | None:
+        response = (
+            supabase.table("Especialidad")
+            .select("id_especialidad,nombre,codigo_reps")
+            .eq("codigo_reps", codigo_reps)
+            .limit(1)
+            .execute()
+        )
+        data = response.data or []
+        return data[0] if data else None
     
