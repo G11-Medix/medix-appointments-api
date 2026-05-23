@@ -2,13 +2,66 @@ http:
 
   routers:
 
+    ai-docs:
+      rule: "Path(`/ai/docs`)"
+      entryPoints:
+        - web
+      service: appointments-service
+      middlewares:
+        - ai-docs-replacepath
+      priority: 100
+
+    ai-docs-redirect:
+      rule: "Path(`/ai/docs/oauth2-redirect`)"
+      entryPoints:
+        - web
+      service: appointments-service
+      middlewares:
+        - ai-docs-redirect-replacepath
+      priority: 100
+
+    appointments:
+      rule: "PathPrefix(`/appointments`)"
+      entryPoints:
+        - web
+      service: appointments-service
+      middlewares:
+        - appointments-stripprefix
+
     ai:
       rule: "PathPrefix(`/ai`)"
+      entryPoints:
+        - web
       service: ai-service
       middlewares:
         - ai-stripprefix
 
+    ai-chat-compat:
+      rule: "PathPrefix(`/chat`)"
+      entryPoints:
+        - web
+      service: ai-service
+
+    ai-asr-compat:
+      rule: "PathPrefix(`/asr`)"
+      entryPoints:
+        - web
+      service: ai-service
+
   middlewares:
+
+    ai-docs-replacepath:
+      replacePath:
+        path: /ai-docs
+
+    ai-docs-redirect-replacepath:
+      replacePath:
+        path: /ai-docs/oauth2-redirect
+
+    appointments-stripprefix:
+      stripPrefix:
+        prefixes:
+          - /appointments
 
     ai-stripprefix:
       stripPrefix:
@@ -20,4 +73,9 @@ http:
     ai-service:
       loadBalancer:
         servers:
-          - url: "${AI_SERVICE_URL}"
+          - url: '{{ env "AI_SERVICE_URL" }}'
+
+    appointments-service:
+      loadBalancer:
+        servers:
+          - url: "http://medix_appointments_api:8001"
