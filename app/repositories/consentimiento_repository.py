@@ -11,7 +11,6 @@ class ConsentimientoRepository:
         "id_aceptacion,id_usuario,id_documento,fecha_aceptacion,ip,dispositivo"
     )
 
-    # 🔹 Obtener documento activo
     def get_documento_activo(self, supabase: Client) -> dict | None:
         response = (
             supabase.table("Documento_Legal")
@@ -25,7 +24,6 @@ class ConsentimientoRepository:
         data = response.data or []
         return data[0] if data else None
 
-    # 🔹 Verificar si existe aceptación
     def exists_aceptacion(
         self,
         supabase: Client,
@@ -43,7 +41,6 @@ class ConsentimientoRepository:
 
         return len(response.data or []) > 0
 
-    # 🔹 Crear aceptación
     def create_aceptacion(
         self,
         supabase: Client,
@@ -58,7 +55,6 @@ class ConsentimientoRepository:
         data = response.data or []
         return data[0] if data else {}
 
-    # 🔹 (Opcional) obtener aceptaciones de un usuario
     def get_aceptaciones_by_user(
         self,
         supabase: Client,

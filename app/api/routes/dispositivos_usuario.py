@@ -1,13 +1,12 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends
 from supabase import Client
 
-from app.db.supabase import get_supabase_client
-from app.services.dispositivos_usuario_service import DispositivosUsuarioService
-from app.schemas.dispositivos_usuario import DispositivoUsuarioResponse
 from app.api.dependencies.auth import require_active_user
-
+from app.db.supabase import get_supabase_client
+from app.schemas.dispositivos_usuario import DispositivoUsuarioResponse
+from app.services.dispositivos_usuario_service import DispositivosUsuarioService
 
 
 router = APIRouter(prefix="/dispositivos", tags=["Dispositivos Usuario"])
@@ -20,7 +19,6 @@ def get_service():
 @router.post("/token", response_model=DispositivoUsuarioResponse)
 def save_token(
     payload: dict,
-    request: Request,
     service: Annotated[DispositivosUsuarioService, Depends(get_service)] = None,
     supabase: Client = Depends(get_supabase_client),
     user=Depends(require_active_user),

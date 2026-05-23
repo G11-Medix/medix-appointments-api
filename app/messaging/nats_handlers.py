@@ -17,9 +17,7 @@ from app.schemas.cita import (
     CitaUpdate,
 )
 from app.schemas.assistant import (
-    AssistantAvailabilityResponse,
     AssistantInstitutionResponse,
-    AssistantPatientResponse,
 )
 from app.schemas.especialidad import EspecialidadResponse
 from app.schemas.institucion import InstitucionResponse
@@ -122,7 +120,8 @@ class NatsApiHandlers:
         return self._validate_and_dump(PacienteResponse, row)
 
     def handle_cita_create(self, payload: dict[str, Any], access_token: str) -> dict[str, Any]:
-        response = self.cita_service.create_cita(
+        response = self._call_with_optional_supabase(
+            self.cita_service.create_cita,
             id_institucion=int(payload["id_institucion"]),
             payload=CitaCreate.model_validate(payload["payload"]),
             access_token=access_token,
@@ -160,7 +159,8 @@ class NatsApiHandlers:
         return self._validate_and_dump(CitaConfirmacionResponse, response)
 
     def handle_cita_cancelar(self, payload: dict[str, Any], access_token: str) -> dict[str, Any]:
-        response = self.cita_service.delete_cita(
+        response = self._call_with_optional_supabase(
+            self.cita_service.delete_cita,
             id_institucion=int(payload["id_institucion"]),
             id_cita=int(payload["id_cita"]),
             payload=CitaDelete.model_validate(payload["payload"]),
@@ -169,7 +169,8 @@ class NatsApiHandlers:
         return self._validate_and_dump(CitaResponse, response)
 
     def handle_cita_reprogramar(self, payload: dict[str, Any], access_token: str) -> dict[str, Any]:
-        response = self.cita_service.update_cita(
+        response = self._call_with_optional_supabase(
+            self.cita_service.update_cita,
             id_institucion=int(payload["id_institucion"]),
             id_cita=int(payload["id_cita"]),
             payload=CitaUpdate.model_validate(payload["payload"]),
@@ -197,6 +198,14 @@ class NatsApiHandlers:
     @staticmethod
     def _validate_and_dump(model_type: type[Any], value: Any) -> dict[str, Any]:
         return jsonable_encoder(model_type.model_validate(value))
+
+    def _call_with_optional_supabase(self, method: Any, **kwargs: Any) -> Any:
+        try:
+            return method(**kwargs, supabase=self.supabase)
+        except TypeError as exc:
+            if "unexpected keyword argument 'supabase'" not in str(exc):
+                raise
+            return method(**kwargs)
 
     @staticmethod
     def _parse_date(value: Any) -> date:
